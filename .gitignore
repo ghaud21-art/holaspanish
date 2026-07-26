@@ -1,0 +1,27 @@
+# dependencies
+/node_modules
+
+# next.js build output
+/.next/
+/out/
+
+# local dev-only fallback database (구글 시트 미설정 시 로컬 테스트용)
+/.local-db.json
+
+# env files (비밀키 포함 — 절대 커밋하지 않기)
+.env
+.env*.local
+
+# 구글 서비스 계정 키 파일 (비밀키 포함 — 절대 커밋하지 않기)
+*service-account*.json
+hpla-spanish-*.json
+*-c0cfebe058b1.json
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# 원본 자료 (용량이 크고 앱에서 직접 참조하지 않음 — public/icon.png, assets/icon.png만 사용)
+/scratch_*.png
+/scratch_*.txt
