@@ -8,6 +8,7 @@ import { resolveTodayVocabWords, levelVocabPool } from '../../lib/vocabLookup';
 import { todayKey } from '../../lib/date';
 import ShareCardButton from '../ShareCardButton';
 import FlipWord from '../FlipWord';
+import Review from './Review';
 
 function seededShuffleIndexes(seed, length, count) {
   let s = seed;
@@ -36,6 +37,7 @@ export default function VocabNotebook() {
   const { profile, recordVocabWord, generatedVocab } = useApp();
   const [query, setQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState('mine');
+  const [tab, setTab] = useState('words');
 
   const today = todayKey();
   const todayCount = profile.dailyVocabDate === today ? profile.dailyVocabWords.length : 0;
@@ -96,11 +98,24 @@ export default function VocabNotebook() {
 
   return (
     <div>
-      <h1>내 단어장</h1>
+      <h1>단어장</h1>
       <p className="text-muted" style={{ marginTop: -8 }}>
         내 레벨({currentLevelTag})에 맞는 단어부터 심화 보너스 단어까지, 커리큘럼 챕터와는 별도로 자유롭게 복습해보세요.
       </p>
 
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
+        <button type="button" className={tab === 'words' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('words')}>
+          단어 학습
+        </button>
+        <button type="button" className={tab === 'review' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('review')}>
+          복습 퀴즈
+        </button>
+      </div>
+
+      {tab === 'review' ? (
+        <Review />
+      ) : (
+        <>
       <div className="card elev-sm" style={{ marginTop: 16, gap: 8, maxWidth: 420 }}>
         <div className="card-kicker">오늘의 단어 학습 목표</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
@@ -156,6 +171,8 @@ export default function VocabNotebook() {
         </div>
         {filtered.length === 0 && <p className="text-muted">이 레벨에는 아직 단어가 없어요. 필터를 바꿔보세요.</p>}
       </div>
+        </>
+      )}
     </div>
   );
 }

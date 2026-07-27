@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/auth';
-import { getRows } from '../../../lib/db';
+import { getRows, updateRow } from '../../../lib/db';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -31,6 +31,8 @@ export async function GET() {
     totalMinutes: Number(p.totalMinutes || 0),
     completedCount: (p.completedChapters || []).length,
     groups: groupNamesByUser[p.userId] || [],
+    aiUsageCount: Number(p.aiUsageCount || 0),
+    aiUnlimited: Boolean(p.aiUnlimited),
   }));
 
   const groupSummaries = groups.map((g) => {
@@ -40,4 +42,17 @@ export async function GET() {
   });
 
   return NextResponse.json({ users, groups: groupSummaries });
+}
+
+export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  if (session.user.role !== 'admin') return NextResponse.json({ error: '관리자만 할 수 있어요.' }, { status: 403 });
+
+  const { action, userId, aiUnlimited } = await request.json();
+  if (action !== 'setAiUnlimited') return NextResponse.json({ error: '알 수 없는 action 입니다.' }, { status: 400 });
+  if (!userId) return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
+
+  const saved = await updateRow('Profiles', 'userId', userId, { aiUnlimited: Boolean(aiUnlimited) });
+  return NextResponse.json({ userId, aiUnlimited: Boolean(saved.aiUnlimited) });
 }

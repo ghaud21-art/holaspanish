@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppContext';
 import ShareCardButton from '../ShareCardButton';
 import LevelPicker from './LevelPicker';
-import { findChapter } from '../../data/curriculum';
+import { CURRICULUM, findChapter } from '../../data/curriculum';
 
 const AVATAR_KEY = 'hola_avatar_data_url';
 
@@ -18,7 +18,7 @@ const ALL_BADGES = [
 ];
 
 export default function MyPage() {
-  const { profile, saveProfilePatch, myGroup, backendMode, showToast } = useApp();
+  const { profile, saveProfilePatch, myGroup, backendMode, showToast, setScreen } = useApp();
   const [editing, setEditing] = useState(false);
   const [draftNickname, setDraftNickname] = useState(profile.nickname);
   const [draftBio, setDraftBio] = useState(profile.bio);
@@ -30,7 +30,14 @@ export default function MyPage() {
     setAvatar(localStorage.getItem(AVATAR_KEY));
   }, []);
 
-  const currentLevelTag = findChapter(profile.currentChapterId)?.levelTag || 'Prep';
+  const currentChapter = findChapter(profile.currentChapterId);
+  const currentLevelTag = currentChapter?.levelTag || 'Prep';
+  const levelProgress = CURRICULUM.map((lvl) => {
+    const total = lvl.chapters.length;
+    const done = lvl.chapters.filter((c) => profile.completedChapters.includes(c.id)).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return { key: lvl.key, label: lvl.label, levelTag: lvl.levelTag, done, total, pct };
+  });
 
   const handleAvatarFile = (file) => {
     if (!file) return;
@@ -116,6 +123,28 @@ export default function MyPage() {
         <div className="card elev-sm"><div className="card-kicker">완료 챕터</div><div className="card-title">{profile.completedChapters.length}개</div></div>
       </div>
 
+      <h3 style={{ marginTop: 24 }}>학습 진도</h3>
+      <div className="card elev-sm" style={{ gap: 6, maxWidth: 480 }}>
+        <div className="card-kicker">지금 학습 중인 챕터</div>
+        <div className="card-title">{currentChapter?.titleEs || '-'}</div>
+        <p className="card-body" style={{ opacity: 1, fontSize: 13 }}>
+          {currentChapter?.titleKr} · {currentLevelTag}
+        </p>
+      </div>
+      <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+        {levelProgress.map((lp) => (
+          <div key={lp.key}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+              <span style={{ fontWeight: 600 }}>{lp.label}</span>
+              <span className="text-muted">{lp.done} / {lp.total}</span>
+            </div>
+            <div style={{ height: 8, background: 'var(--color-surface)', border: '1px solid var(--color-divider)' }}>
+              <div style={{ height: '100%', width: `${lp.pct}%`, background: 'var(--color-accent)' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
       <h3 style={{ marginTop: 24 }}>가입한 그룹</h3>
       {myGroup ? (
         <div className="card elev-sm" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -130,9 +159,12 @@ export default function MyPage() {
         <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
           레벨테스트 결과와 상관없이, 언제든 원하는 레벨의 첫 챕터로 다시 시작할 수 있어요.
         </p>
-        <button type="button" className="btn btn-ghost" onClick={() => setShowLevelPicker((v) => !v)}>
-          {showLevelPicker ? '닫기' : '레벨 변경하기'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className="btn btn-ghost" onClick={() => setScreen('leveltest')}>레벨테스트 다시 보기</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setShowLevelPicker((v) => !v)}>
+            {showLevelPicker ? '닫기' : '레벨 변경하기'}
+          </button>
+        </div>
       </div>
       {showLevelPicker && <div style={{ marginTop: 12 }}><LevelPicker onPicked={() => setShowLevelPicker(false)} /></div>}
 
@@ -168,6 +200,9 @@ export default function MyPage() {
       />
 
       <p className="text-muted" style={{ fontSize: 11, marginTop: 32 }}>
+        AI 작문 도우미/첨삭 사용: {profile.aiUnlimited ? '무제한' : `${profile.aiUsageCount || 0} / 10회`}
+      </p>
+      <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
         데이터 저장 방식: {backendMode === 'supabase' ? 'Supabase 연동됨 (여러 기기·사람과 공유)' : '로컬 저장 모드 (Supabase 미설정 — README 참고)'}
       </p>
     </div>

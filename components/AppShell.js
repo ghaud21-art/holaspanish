@@ -14,7 +14,6 @@ import Dashboard from './screens/Dashboard';
 import LevelTest from './screens/LevelTest';
 import { ChapterList, ChapterDetail } from './screens/Chapters';
 import VocabNotebook from './screens/VocabNotebook';
-import Review from './screens/Review';
 import { GroupScreen, BoardScreen, RankingScreen } from './screens/Social';
 import MyPage from './screens/MyPage';
 import AdminScreen from './screens/AdminScreen';
@@ -31,6 +30,9 @@ const DEFAULT_PROFILE = {
   lastStudyDate: '',
   dailyVocabDate: '',
   dailyVocabWords: [],
+  aiUsageCount: 0,
+  aiUnlimited: false,
+  levelTestDone: false,
 };
 
 // 학습 활동(단어 카드, 작문 제출 등)이 있을 때마다 호출해서 스트릭/누적 시간/오늘의 단어 목표를 함께 갱신합니다.
@@ -82,7 +84,8 @@ export default function AppShell() {
 
   const [myGroup, setMyGroup] = useState(null);
   const [members, setMembers] = useState([]);
-  const [posts, setPosts] = useState([]);
+  const [myPosts, setMyPosts] = useState([]);
+  const [groupPosts, setGroupPosts] = useState([]);
   const [generatedVocab, setGeneratedVocab] = useState([]);
   const [vocabProgress, setVocabProgress] = useState([]);
 
@@ -117,14 +120,18 @@ export default function AppShell() {
         }
         setProfile(nextProfile);
         setBackendMode(statusRes.mode);
+        // 레벨테스트는 가입 직후 한 번만 자동으로 띄워요. 그 이후엔 마이페이지에서만 다시 볼 수 있어요.
+        if (!nextProfile.levelTestDone) setScreen('leveltest');
         const first = groupsRes.myGroups?.[0] || null;
         setMyGroup(first || null);
-        const [membersRes, postsRes] = await Promise.all([
+        const [membersRes, myPostsRes, groupPostsRes] = await Promise.all([
           first ? api.getGroupMembers(first.groupId) : Promise.resolve({ members: [] }),
-          api.getPosts(first ? first.groupId : soloBoardId(userId)),
+          api.getPosts(soloBoardId(userId)),
+          first ? api.getPosts(first.groupId) : Promise.resolve({ posts: [] }),
         ]);
         setMembers(membersRes.members || []);
-        setPosts(postsRes.posts || []);
+        setMyPosts(myPostsRes.posts || []);
+        setGroupPosts(groupPostsRes.posts || []);
       } catch (err) {
         showToast('데이터를 불러오지 못했어요: ' + err.message);
       } finally {
@@ -269,7 +276,7 @@ export default function AppShell() {
         })
         .catch((err) => {
           updateChapterUi(id, {
-            helpChat: [...nextHistory, { role: 'assistant', text: '도움을 가져오지 못했어요: ' + err.message }],
+            helpChat: [...nextHistory, { role: 'assistant', text: err.message || '도움을 가져오지 못했어요.' }],
             helpStatus: 'idle',
           });
         });
@@ -278,9 +285,12 @@ export default function AppShell() {
   );
 
   const refreshPosts = useCallback(async () => {
-    const boardId = myGroup ? myGroup.groupId : soloBoardId(userId);
-    const res = await api.getPosts(boardId);
-    setPosts(res.posts || []);
+    const soloRes = await api.getPosts(soloBoardId(userId));
+    setMyPosts(soloRes.posts || []);
+    if (myGroup) {
+      const groupRes = await api.getPosts(myGroup.groupId);
+      setGroupPosts(groupRes.posts || []);
+    }
   }, [myGroup, userId]);
 
   const submitWriting = useCallback(() => {
@@ -330,10 +340,10 @@ export default function AppShell() {
         saveProfilePatch(patch);
         showToast(alreadyDone ? '다시 통과했어요!' : '챕터 통과! +50P 획득');
 
-        // 그룹이 없어도 개인 작문 게시판(soloBoardId)에 기록해서 혼자서도 작문 이력을 모아볼 수 있어요.
+        // 개인 게시판에는 항상 기록하고, 그룹에 가입돼 있으면 그룹 게시판에도 별도로 남겨서
+        // "내 게시판"과 "그룹 게시판"이 서로 분리되어 각자 유지되게 해요.
         try {
-          await api.createPost({
-            groupId: myGroup ? myGroup.groupId : soloBoardId(userId),
+          const postBase = {
             userId,
             nickname: p.nickname || '익명',
             chapterId: id,
@@ -341,7 +351,9 @@ export default function AppShell() {
             text: ui.writingText,
             score,
             feedback,
-          });
+          };
+          await api.createPost({ ...postBase, groupId: soloBoardId(userId) });
+          if (myGroup) await api.createPost({ ...postBase, groupId: myGroup.groupId });
           refreshPosts();
           if (myGroup) api.getGroupMembers(myGroup.groupId).then((r) => setMembers(r.members || []));
         } catch {
@@ -360,7 +372,7 @@ export default function AppShell() {
     async (name) => {
       const res = await api.createGroup(userId, name);
       setMyGroup(res.group);
-      await Promise.all([refreshMembers(res.group.groupId), api.getPosts(res.group.groupId).then((r) => setPosts(r.posts || []))]);
+      await Promise.all([refreshMembers(res.group.groupId), api.getPosts(res.group.groupId).then((r) => setGroupPosts(r.posts || []))]);
     },
     [userId, refreshMembers]
   );
@@ -369,7 +381,7 @@ export default function AppShell() {
     async (code) => {
       const res = await api.joinGroup(userId, code);
       setMyGroup(res.group);
-      await Promise.all([refreshMembers(res.group.groupId), api.getPosts(res.group.groupId).then((r) => setPosts(r.posts || []))]);
+      await Promise.all([refreshMembers(res.group.groupId), api.getPosts(res.group.groupId).then((r) => setGroupPosts(r.posts || []))]);
     },
     [userId, refreshMembers]
   );
@@ -390,7 +402,10 @@ export default function AppShell() {
 
   const reactPost = useCallback(
     async (postId, emoji) => {
-      setPosts((prev) => prev.map((p) => (p.postId === postId ? { ...p, reactions: { ...p.reactions, [emoji]: (p.reactions[emoji] || 0) + 1 } } : p)));
+      const bump = (prev) =>
+        prev.map((p) => (p.postId === postId ? { ...p, reactions: { ...p.reactions, [emoji]: (p.reactions[emoji] || 0) + 1 } } : p));
+      setMyPosts(bump);
+      setGroupPosts(bump);
       try {
         await api.reactPost(postId, emoji);
       } catch {
@@ -436,7 +451,8 @@ export default function AppShell() {
     askWritingHelp,
     myGroup,
     members,
-    posts,
+    myPosts,
+    groupPosts,
     createGroup,
     joinGroup,
     cheerMember,
@@ -475,7 +491,6 @@ export default function AppShell() {
   else if (activeScreen === 'chapters') ScreenComp = ChapterList;
   else if (activeScreen === 'chapterDetail') ScreenComp = ChapterDetail;
   else if (activeScreen === 'vocab') ScreenComp = VocabNotebook;
-  else if (activeScreen === 'review') ScreenComp = Review;
   else if (activeScreen === 'group') ScreenComp = GroupScreen;
   else if (activeScreen === 'board') ScreenComp = BoardScreen;
   else if (activeScreen === 'ranking') ScreenComp = RankingScreen;

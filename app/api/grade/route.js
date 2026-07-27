@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/auth';
 import { gradeWritingWithGemini } from '../../../lib/gemini';
 import { mockGrade, PASS_THRESHOLD } from '../../../lib/grading';
+import { checkAndConsumeAiQuota } from '../../../lib/aiQuota';
 
 export async function POST(request) {
   const session = await getServerSession(authOptions);
@@ -11,6 +12,13 @@ export async function POST(request) {
   const { titleEs, titleKr, prompt, text } = await request.json();
   if (!text || !text.trim()) {
     return NextResponse.json({ score: 0, feedback: ['문장을 작성해주세요.'], passed: false });
+  }
+
+  const quota = await checkAndConsumeAiQuota(session.user.id);
+  if (!quota.allowed) {
+    // 무료 사용 횟수를 다 썼으면 Gemini 대신 규칙 기반 채점으로 조용히 대체해요.
+    const { score, feedback } = mockGrade(text);
+    return NextResponse.json({ score, feedback, passed: score >= PASS_THRESHOLD, source: 'mock', aiQuotaExceeded: true });
   }
 
   try {

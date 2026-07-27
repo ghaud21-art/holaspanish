@@ -4,10 +4,8 @@ import { useApp } from './AppContext';
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: '홈' },
-  { key: 'leveltest', label: '레벨테스트' },
   { key: 'chapters', label: '챕터학습' },
-  { key: 'vocab', label: '내 단어장' },
-  { key: 'review', label: '복습 퀴즈' },
+  { key: 'vocab', label: '단어장' },
   { key: 'group', label: '그룹' },
   { key: 'board', label: '작문게시판' },
   { key: 'ranking', label: '랭킹' },

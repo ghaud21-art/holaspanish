@@ -126,8 +126,7 @@ export default function Review() {
 
   return (
     <div>
-      <h1>복습 퀴즈</h1>
-      <p className="text-muted" style={{ marginTop: -8 }}>
+      <p className="text-muted" style={{ marginTop: 4 }}>
         어제 이전에 배운 단어를 퀴즈로 복습해요. 틀린 단어는 오답노트에 모아뒀다가 다시 맞히면 사라져요.
       </p>
 

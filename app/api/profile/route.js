@@ -19,6 +19,9 @@ function toClient(row) {
     lastStudyDate: row.lastStudyDate || '',
     dailyVocabDate: row.dailyVocabDate || '',
     dailyVocabWords: row.dailyVocabWords || [],
+    aiUsageCount: Number(row.aiUsageCount || 0),
+    aiUnlimited: Boolean(row.aiUnlimited),
+    levelTestDone: Boolean(row.levelTestDone),
     updatedAt: row.updatedAt,
   };
 }
@@ -38,6 +41,9 @@ function defaultProfile(userId, email) {
     lastStudyDate: '',
     dailyVocabDate: '',
     dailyVocabWords: [],
+    aiUsageCount: 0,
+    aiUnlimited: false,
+    levelTestDone: false,
   };
 }
 
@@ -57,6 +63,11 @@ export async function POST(request) {
   const body = await request.json();
   const { patch } = body;
   if (!patch) return NextResponse.json({ error: 'patch가 필요합니다.' }, { status: 400 });
+
+  // AI 사용량/무제한 권한은 서버(관리자 라우트, AI 라우트)에서만 바꿀 수 있어요 —
+  // 사용자가 자기 프로필 patch로 직접 조작하지 못하도록 여기서 제거합니다.
+  delete patch.aiUsageCount;
+  delete patch.aiUnlimited;
 
   const rows = await getRows('Profiles');
   const existing = rows.find((r) => r.userId === userId);

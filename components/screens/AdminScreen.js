@@ -74,6 +74,16 @@ export default function AdminScreen() {
     }
   };
 
+  const handleToggleAiUnlimited = async (userId, aiUnlimited) => {
+    try {
+      await api.setAiUnlimited(userId, aiUnlimited);
+      setUsers((prev) => prev.map((u) => (u.userId === userId ? { ...u, aiUnlimited } : u)));
+      showToast(aiUnlimited ? 'AI 무제한 사용을 허용했어요.' : 'AI 무제한 사용을 해제했어요.');
+    } catch (err) {
+      showToast('변경에 실패했어요: ' + err.message);
+    }
+  };
+
   const handleGenerateVocab = async () => {
     setVocabGenerating(true);
     setGeneratedPreview([]);
@@ -131,7 +141,7 @@ export default function AdminScreen() {
       <div className="scroll-panel" style={{ maxHeight: '40vh' }}>
         <table className="table">
           <thead>
-            <tr><th>닉네임</th><th>이메일</th><th>연속학습</th><th>포인트</th><th>완료 챕터</th><th>그룹</th></tr>
+            <tr><th>닉네임</th><th>이메일</th><th>연속학습</th><th>포인트</th><th>완료 챕터</th><th>그룹</th><th>AI 사용</th><th></th></tr>
           </thead>
           <tbody>
             {users.map((u) => (
@@ -142,6 +152,19 @@ export default function AdminScreen() {
                 <td>{u.points}P</td>
                 <td>{u.completedCount}개</td>
                 <td style={{ fontSize: 12 }}>{u.groups.join(', ') || '-'}</td>
+                <td style={{ fontSize: 12 }}>
+                  {u.aiUnlimited ? <span className="tag tag-accent">무제한</span> : `${u.aiUsageCount} / 10`}
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ fontSize: 11, padding: '4px 8px' }}
+                    onClick={() => handleToggleAiUnlimited(u.userId, !u.aiUnlimited)}
+                  >
+                    {u.aiUnlimited ? '무제한 해제' : '무제한 허용'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

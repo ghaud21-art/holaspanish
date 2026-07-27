@@ -108,10 +108,6 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-
-      <div style={{ marginTop: 32 }}>
-        <button type="button" className="btn btn-ghost" onClick={() => setScreen('leveltest')}>레벨테스트 다시 보기</button>
-      </div>
     </div>
   );
 }

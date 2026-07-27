@@ -1,13 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '../AppContext';
-import { TEST_QUESTIONS, SKIP_LABEL, evaluateTest, CURRICULUM } from '../../data/curriculum';
+import { TEST_QUESTIONS, SKIP_LABEL, evaluateTest, CURRICULUM, resumeChapterFor } from '../../data/curriculum';
 import LevelPicker from './LevelPicker';
 
 const SKIP = -1;
 
 export default function LevelTest() {
-  const { setScreen, saveProfilePatch } = useApp();
+  const { setScreen, saveProfilePatch, profile } = useApp();
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState([]);
@@ -48,9 +48,13 @@ export default function LevelTest() {
   const recommendedLevel = result ? CURRICULUM.find((l) => l.key === result.recommendedKey) : null;
 
   const goToChapters = (adoptLevel) => {
+    const patch = { levelTestDone: true };
     if (adoptLevel && recommendedLevel) {
-      saveProfilePatch({ currentChapterId: recommendedLevel.chapters[0].id });
+      // 이미 이 레벨을 어느 정도 진행했다면 처음으로 되돌리지 않고, 완료 안 한 첫 챕터로 이어서 보내요.
+      const resume = resumeChapterFor(recommendedLevel, profile.completedChapters);
+      patch.currentChapterId = resume.id;
     }
+    saveProfilePatch(patch);
     setScreen('chapters');
   };
 
@@ -76,7 +80,12 @@ export default function LevelTest() {
               <p className="text-muted" style={{ fontSize: 13 }}>
                 레벨테스트와 상관없이, 원하는 레벨의 첫 챕터로 바로 시작할 수 있어요.
               </p>
-              <LevelPicker onPicked={() => setShowPicker(false)} />
+              <LevelPicker
+                onPicked={() => {
+                  saveProfilePatch({ levelTestDone: true });
+                  setShowPicker(false);
+                }}
+              />
             </div>
           )}
         </>

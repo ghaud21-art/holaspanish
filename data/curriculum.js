@@ -334,6 +334,14 @@ export function findChapter(id) {
   return FLAT_CHAPTERS.find((c) => c.id === id);
 }
 
+// 레벨을 선택(레벨테스트/레벨 직접 선택)할 때, 무조건 그 레벨의 첫 챕터로 보내면
+// 이미 그 레벨을 어느 정도 진행한 사용자는 진도가 처음으로 되돌아간 것처럼 보여요.
+// 그래서 그 레벨에서 아직 완료하지 않은 첫 챕터로 이어서 시작하도록 계산합니다.
+export function resumeChapterFor(level, completedChapters = []) {
+  const next = level.chapters.find((c) => !completedChapters.includes(c.id));
+  return next || level.chapters[level.chapters.length - 1];
+}
+
 // 레벨테스트 문항 — 레벨(prep→A1→A2→B1→B2) 순서대로 난이도가 올라가도록 각 레벨당 3문항씩 배치했습니다.
 // 각 문항은 "지시문 + 빈칸 문장 + 보기 4개" 형식이고, 마지막 보기는 항상 "잘 모르겠습니다"(추측 방지, 오답 처리)입니다.
 export const SKIP_LABEL = '잘 모르겠습니다. (정확성을 위해, 추측은 삼가 부탁드립니다)';

@@ -1,6 +1,6 @@
 'use client';
 import { useApp } from '../AppContext';
-import { CURRICULUM } from '../../data/curriculum';
+import { CURRICULUM, resumeChapterFor } from '../../data/curriculum';
 
 const LEVEL_DESC = {
   Prep: '스페인어를 처음 시작해요 (발음, 인사말)',
@@ -11,11 +11,17 @@ const LEVEL_DESC = {
 };
 
 export default function LevelPicker({ onPicked }) {
-  const { saveProfilePatch, showToast, setScreen, setOpenChapterId } = useApp();
+  const { profile, saveProfilePatch, showToast, setScreen, setOpenChapterId } = useApp();
 
   const pick = (lvl) => {
-    if (!window.confirm(`${lvl.levelTag} 레벨의 첫 챕터부터 시작할까요? (기존에 완료한 챕터 기록은 그대로 남아요)`)) return;
-    saveProfilePatch({ currentChapterId: lvl.chapters[0].id });
+    // 이미 이 레벨을 어느 정도 진행했다면 처음으로 되돌리지 않고, 완료 안 한 첫 챕터로 이어서 시작해요.
+    const resume = resumeChapterFor(lvl, profile.completedChapters);
+    const isRestart = resume.id === lvl.chapters[0].id;
+    const message = isRestart
+      ? `${lvl.levelTag} 레벨의 첫 챕터부터 시작할까요? (기존에 완료한 챕터 기록은 그대로 남아요)`
+      : `${lvl.levelTag} 레벨은 이미 진행 중이에요. "${resume.titleKr}"부터 이어서 시작할까요?`;
+    if (!window.confirm(message)) return;
+    saveProfilePatch({ currentChapterId: resume.id });
     setOpenChapterId(null);
     showToast(`${lvl.levelTag} 레벨로 시작 지점을 설정했어요.`);
     if (onPicked) onPicked(lvl);

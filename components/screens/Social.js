@@ -102,16 +102,34 @@ export function GroupScreen() {
 }
 
 export function BoardScreen() {
-  const { myGroup, posts, reactPost, commentPost, userId, profile } = useApp();
+  const { myGroup, myPosts, groupPosts, reactPost, commentPost, userId, profile } = useApp();
   const [drafts, setDrafts] = useState({});
+  const [tab, setTab] = useState(myGroup ? 'group' : 'mine');
+
+  const activeTab = myGroup ? tab : 'mine';
+  const posts = activeTab === 'group' ? groupPosts : myPosts;
 
   return (
     <div style={{ maxWidth: 680 }}>
       <h1>작문 게시판</h1>
+
+      {myGroup && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <button type="button" className={activeTab === 'mine' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('mine')}>
+            내 게시판
+          </button>
+          <button type="button" className={activeTab === 'group' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('group')}>
+            {myGroup.name}
+          </button>
+        </div>
+      )}
+
       <p className="text-muted" style={{ marginTop: -8 }}>
-        {myGroup
+        {activeTab === 'group'
           ? '챕터 학습에서 제출한 작문이 여기 그룹원들과 함께 모여요.'
-          : '아직 그룹에 가입하지 않아서 나만 볼 수 있는 개인 작문 기록이에요. 그룹에 가입하면 그룹원들과 함께 볼 수 있어요.'}
+          : myGroup
+          ? '나만 볼 수 있는 개인 작문 기록이에요. 작문을 제출하면 여기와 그룹 게시판 둘 다에 남아요.'
+          : '아직 그룹에 가입하지 않아서 나만 볼 수 있는 개인 작문 기록이에요. 그룹에 가입하면 그룹 게시판도 따로 생겨요.'}
       </p>
       <div style={{ display: 'grid', gap: 16, marginTop: 16 }}>
         {posts.length === 0 && <p className="text-muted">아직 게시물이 없어요. 챕터 학습에서 작문을 제출해보세요!</p>}
