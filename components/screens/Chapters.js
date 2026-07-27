@@ -1,6 +1,6 @@
 'use client';
 import { useApp } from '../AppContext';
-import { CURRICULUM, findChapter } from '../../data/curriculum';
+import { CURRICULUM, FLAT_CHAPTERS, findChapter } from '../../data/curriculum';
 import ShareCardButton from '../ShareCardButton';
 import FlipWord from '../FlipWord';
 
@@ -63,7 +63,7 @@ export function ChapterList() {
 
 export function ChapterDetail() {
   const {
-    openChapterId, closeChapter, chapterUi, flipCard, markCard, setWritingText, submitWriting, profile,
+    openChapterId, closeChapter, chapterUi, flipCard, markCard, setWritingText, submitWriting, profile, openChapter, isChapterLocked,
   } = useApp();
   const chapter = findChapter(openChapterId);
   const ui = chapterUi[openChapterId] || { flipped: false, queue: [], writingText: '', gradingStatus: 'idle', gradingResult: null };
@@ -74,6 +74,7 @@ export function ChapterDetail() {
   const queueEmpty = hasVocab && ui.queue.length === 0;
   const card = hasVocab && ui.queue.length ? chapter.keyVocab[ui.queue[0]] : null;
   const doneCount = hasVocab ? chapter.keyVocab.length - ui.queue.length : 0;
+  const nextChapter = FLAT_CHAPTERS[FLAT_CHAPTERS.findIndex((c) => c.id === chapter.id) + 1];
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -184,6 +185,18 @@ export function ChapterDetail() {
                   ]}
                   quote={{ es: chapter.titleEs, kr: chapter.titleKr }}
                 />
+              )}
+              {ui.gradingResult.passed && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                  {nextChapter && !isChapterLocked(nextChapter.id) && (
+                    <button type="button" className="btn btn-primary" onClick={() => openChapter(nextChapter.id)}>
+                      다음 챕터로 이동 →
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-secondary" onClick={closeChapter}>
+                    오늘은 여기까지 (목록으로)
+                  </button>
+                </div>
               )}
             </div>
           )}
