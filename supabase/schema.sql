@@ -60,8 +60,22 @@ create table if not exists generated_vocab (
   created_at timestamptz not null default now()
 );
 
+create table if not exists vocab_progress (
+  user_id text not null,
+  word_key text not null,
+  es text not null,
+  kr text not null,
+  box integer not null default 0,
+  wrong_count integer not null default 0,
+  last_wrong boolean not null default false,
+  next_review_date text default '',
+  updated_at timestamptz not null default now(),
+  primary key (user_id, word_key)
+);
+
 create index if not exists memberships_user_id_idx on memberships (user_id);
 create index if not exists posts_group_id_idx on posts (group_id);
+create index if not exists vocab_progress_user_id_idx on vocab_progress (user_id);
 
 -- 이 앱은 서버 라우트에서 서비스 역할 키(service_role key)로만 접근하고,
 -- 브라우저에서 직접 테이블에 접근하지 않으므로 RLS는 기본값(비활성) 그대로 둡니다.

@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: 'leveltest', label: '레벨테스트' },
   { key: 'chapters', label: '챕터학습' },
   { key: 'vocab', label: '내 단어장' },
+  { key: 'review', label: '복습 퀴즈' },
   { key: 'group', label: '그룹' },
   { key: 'board', label: '작문게시판' },
   { key: 'ranking', label: '랭킹' },
@@ -19,10 +20,18 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <span className="nav-brand">
+      <button
+        type="button"
+        className="nav-brand"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
+        onClick={() => {
+          setOpenChapterId(null);
+          setScreen('dashboard');
+        }}
+      >
         <img src="/icon.png" alt="" width={28} height={28} style={{ borderRadius: 6 }} />
         Hola<span style={{ color: 'var(--color-accent)' }}>.</span>
-      </span>
+      </button>
       {items.map((item) => (
         <button
           key={item.key}

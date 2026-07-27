@@ -1,11 +1,13 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { BONUS_VOCAB } from '../../data/bonusVocab';
+import { CURRICULUM, findChapter } from '../../data/curriculum';
 import { useApp } from '../AppContext';
 import { DAILY_VOCAB_GOAL } from '../../lib/constants';
-import { resolveTodayVocabWords } from '../../lib/vocabLookup';
+import { resolveTodayVocabWords, levelVocabPool } from '../../lib/vocabLookup';
 import { todayKey } from '../../lib/date';
 import ShareCardButton from '../ShareCardButton';
+import FlipWord from '../FlipWord';
 
 function seededShuffleIndexes(seed, length, count) {
   let s = seed;
@@ -21,54 +23,82 @@ function seededShuffleIndexes(seed, length, count) {
   return idxs.slice(0, count);
 }
 
-function FlipWord({ word, onFirstFlip }) {
-  const [flipped, setFlipped] = useState(false);
-  return (
-    <div
-      className="card elev-sm"
-      style={{ cursor: 'pointer', minHeight: 96, justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}
-      onClick={() => {
-        if (!flipped && onFirstFlip) onFirstFlip();
-        setFlipped((f) => !f);
-      }}
-    >
-      <div style={{ fontWeight: 800, fontSize: 17 }}>{word.es}</div>
-      {flipped ? (
-        <div style={{ color: 'var(--color-accent)', fontSize: 13 }}>{word.kr}</div>
-      ) : (
-        <div className="text-muted" style={{ fontSize: 11 }}>탭해서 뜻 보기</div>
-      )}
-    </div>
-  );
+function dedupeByEs(list) {
+  const seen = new Set();
+  return list.filter((w) => {
+    if (seen.has(w.es)) return false;
+    seen.add(w.es);
+    return true;
+  });
 }
 
 export default function VocabNotebook() {
   const { profile, recordVocabWord, generatedVocab } = useApp();
   const [query, setQuery] = useState('');
+  const [levelFilter, setLevelFilter] = useState('mine');
 
   const today = todayKey();
   const todayCount = profile.dailyVocabDate === today ? profile.dailyVocabWords.length : 0;
-  const allVocab = useMemo(() => [...generatedVocab, ...BONUS_VOCAB], [generatedVocab]);
+  const currentLevelTag = findChapter(profile.currentChapterId)?.levelTag || 'Prep';
+
+  // 오늘의 단어 10개는 내 레벨에 맞는 단어(Gemini 생성 단어 + 그 레벨 챕터 단어)를 우선 채우고,
+  // 그래도 모자라면 다른 레벨의 생성 단어로, 그것도 부족하면 심화 보너스 단어장으로 채워요.
+  const todayPool = useMemo(() => {
+    const mine = levelVocabPool(currentLevelTag, generatedVocab);
+    let pool = dedupeByEs(mine);
+    if (pool.length < DAILY_VOCAB_GOAL) {
+      const otherGen = generatedVocab
+        .filter((w) => w.level !== currentLevelTag)
+        .map((w) => ({ es: w.es, kr: w.kr, key: `gen:${w.es}` }));
+      pool = dedupeByEs([...pool, ...otherGen]);
+    }
+    if (pool.length < DAILY_VOCAB_GOAL) {
+      const bonus = BONUS_VOCAB.map((w) => ({ es: w.es, kr: w.kr, key: `bonus:${w.es}`, advanced: true }));
+      pool = dedupeByEs([...pool, ...bonus]);
+    }
+    return pool;
+  }, [currentLevelTag, generatedVocab]);
+
+  const allVocab = useMemo(() => {
+    const gen = generatedVocab.map((w) => ({ ...w, level: w.level || '레벨 미지정' }));
+    const bonus = BONUS_VOCAB.map((w) => ({ ...w, level: '심화' }));
+    return [...gen, ...bonus];
+  }, [generatedVocab]);
 
   const todaySeed = useMemo(() => {
     const d = new Date();
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }, []);
-  const todayIdxs = useMemo(() => seededShuffleIndexes(todaySeed, BONUS_VOCAB.length, DAILY_VOCAB_GOAL), [todaySeed]);
-  const todayWords = todayIdxs.map((i) => BONUS_VOCAB[i]);
+  const todayIdxs = useMemo(
+    () => seededShuffleIndexes(todaySeed, todayPool.length, Math.min(DAILY_VOCAB_GOAL, todayPool.length)),
+    [todaySeed, todayPool.length]
+  );
+  const todayWords = todayIdxs.map((i) => todayPool[i]);
   const reviewedToday = resolveTodayVocabWords(profile, generatedVocab);
+
+  const levelOptions = [
+    { value: 'mine', label: `내 레벨 (${currentLevelTag})` },
+    { value: 'all', label: '전체' },
+    ...CURRICULUM.map((lvl) => ({ value: lvl.levelTag, label: lvl.levelTag })),
+    { value: '심화', label: '심화 (보너스)' },
+  ];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return allVocab;
-    return allVocab.filter((w) => w.es.toLowerCase().includes(q) || w.kr.toLowerCase().includes(q));
-  }, [query, allVocab]);
+    const byLevel = allVocab.filter((w) => {
+      if (levelFilter === 'all') return true;
+      if (levelFilter === 'mine') return w.level === currentLevelTag;
+      return w.level === levelFilter;
+    });
+    if (!q) return byLevel;
+    return byLevel.filter((w) => w.es.toLowerCase().includes(q) || w.kr.toLowerCase().includes(q));
+  }, [query, allVocab, levelFilter, currentLevelTag]);
 
   return (
     <div>
       <h1>내 단어장</h1>
       <p className="text-muted" style={{ marginTop: -8 }}>
-        예전에 정리해둔 개인 단어장에서 고른 보너스 단어들이에요. 커리큘럼 챕터와는 별도로 자유롭게 복습해보세요.
+        내 레벨({currentLevelTag})에 맞는 단어부터 심화 보너스 단어까지, 커리큘럼 챕터와는 별도로 자유롭게 복습해보세요.
       </p>
 
       <div className="card elev-sm" style={{ marginTop: 16, gap: 8, maxWidth: 420 }}>
@@ -83,15 +113,17 @@ export default function VocabNotebook() {
       </div>
 
       <h3 style={{ marginTop: 24 }}>오늘의 단어 {DAILY_VOCAB_GOAL}개</h3>
-      <p className="text-muted" style={{ marginTop: -6, fontSize: 13 }}>탭해서 뜻을 확인하면 오늘의 학습으로 기록돼요.</p>
+      <p className="text-muted" style={{ marginTop: -6, fontSize: 13 }}>
+        내 레벨({currentLevelTag})에 맞는 단어 위주예요. 탭해서 뜻을 확인하면 오늘의 학습으로 기록돼요.
+      </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12, marginTop: 12 }}>
         {todayWords.map((w) => (
-          <FlipWord key={w.es} word={w} onFirstFlip={() => recordVocabWord(`bonus:${w.es}`)} />
+          <FlipWord key={w.key} word={w} badge={w.advanced ? '심화' : undefined} onFirstFlip={() => recordVocabWord(w.key)} />
         ))}
       </div>
       <div style={{ marginTop: 12 }}>
         <ShareCardButton
-          label="오늘 배운 단어 카드 저장·공유"
+          label="오늘 배운 단어 카드 저장"
           filename="hola-today-vocab"
           eyebrow="오늘의 단어"
           title="오늘 배운 스페인어 단어"
@@ -101,21 +133,28 @@ export default function VocabNotebook() {
       </div>
 
       <div className="hr" />
-      <h3>전체 단어장 ({allVocab.length}개{generatedVocab.length ? `, Gemini로 생성된 ${generatedVocab.length}개 포함` : ''})</h3>
-      <input
-        className="input"
-        placeholder="스페인어 또는 한글 뜻으로 검색"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{ marginBottom: 16, maxWidth: 360 }}
-      />
+      <h3>전체 단어장 ({filtered.length}개{generatedVocab.length ? `, Gemini로 생성된 단어 ${generatedVocab.length}개 포함` : ''})</h3>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <select className="input" style={{ maxWidth: 180 }} value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)}>
+          {levelOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <input
+          className="input"
+          placeholder="스페인어 또는 한글 뜻으로 검색"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ maxWidth: 360, flex: 1 }}
+        />
+      </div>
       <div className="scroll-panel">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
           {filtered.map((w) => (
-            <FlipWord key={w.id || w.es} word={w} onFirstFlip={() => recordVocabWord(`${w.id ? 'gen' : 'bonus'}:${w.es}`)} />
+            <FlipWord key={w.id || w.es} word={w} badge={w.level} onFirstFlip={() => recordVocabWord(`${w.id ? 'gen' : 'bonus'}:${w.es}`)} />
           ))}
         </div>
-        {filtered.length === 0 && <p className="text-muted">검색 결과가 없어요.</p>}
+        {filtered.length === 0 && <p className="text-muted">이 레벨에는 아직 단어가 없어요. 필터를 바꿔보세요.</p>}
       </div>
     </div>
   );

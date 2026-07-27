@@ -25,3 +25,6 @@ npm-debug.log*
 # 원본 자료 (용량이 크고 앱에서 직접 참조하지 않음 — public/icon.png, assets/icon.png만 사용)
 /scratch_*.png
 /scratch_*.txt
+
+.vercel
+.env*

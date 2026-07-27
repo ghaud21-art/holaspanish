@@ -189,24 +189,18 @@ export default function ShareCardButton({ eyebrow, title, subtitle, stats, quote
       const canvas = await buildCanvas({ eyebrow, title, subtitle, stats, quote, wordList });
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('이미지를 만들지 못했어요.');
-      const file = new File([blob], `${filename || 'hola-study-card'}.png`, { type: 'image/png' });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: title || 'Hola. 학습 기록', text: subtitle || '' });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filename || 'hola-study-card'}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-      }
+      // 공유 시트로 바로 넘기지 않고, 갤러리/다운로드 폴더에 이미지로 저장만 해요.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename || 'hola-study-card'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (err) {
-      if (err && err.name !== 'AbortError') {
-        alert('이미지를 저장/공유하지 못했어요: ' + err.message);
-      }
+      alert('이미지를 저장하지 못했어요: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -214,7 +208,7 @@ export default function ShareCardButton({ eyebrow, title, subtitle, stats, quote
 
   return (
     <button type="button" className={className || 'btn btn-secondary'} onClick={handleClick} disabled={busy}>
-      {busy ? '카드 만드는 중…' : label || '이미지로 저장·공유'}
+      {busy ? '카드 만드는 중…' : label || '이미지로 저장'}
     </button>
   );
 }

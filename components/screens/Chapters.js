@@ -2,6 +2,7 @@
 import { useApp } from '../AppContext';
 import { CURRICULUM, findChapter } from '../../data/curriculum';
 import ShareCardButton from '../ShareCardButton';
+import FlipWord from '../FlipWord';
 
 function Check() {
   return (
@@ -107,6 +108,14 @@ export function ChapterDetail() {
               <p className="card-body">이 챕터의 단어를 모두 학습했어요. 아래 예문도 살펴보세요.</p>
             </div>
           )}
+
+          <h4 className="text-muted" style={{ marginTop: 24, marginBottom: 10 }}>이 챕터 단어 모아보기</h4>
+          <p className="text-muted" style={{ marginTop: -6, fontSize: 12 }}>&ldquo;알아요&rdquo;를 눌러도 여기서 언제든 다시 뒤집어볼 수 있어요.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
+            {chapter.keyVocab.map((w) => (
+              <FlipWord key={w.es} word={w} />
+            ))}
+          </div>
         </>
       )}
 
@@ -163,7 +172,7 @@ export function ChapterDetail() {
               </ul>
               {ui.gradingResult.passed && (
                 <ShareCardButton
-                  label="이 챕터 완료 카드 저장·공유"
+                  label="이 챕터 완료 카드 저장"
                   filename={`hola-${chapter.id}`}
                   eyebrow={chapter.levelTag}
                   title={chapter.titleKr}

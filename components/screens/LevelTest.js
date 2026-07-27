@@ -32,6 +32,12 @@ export default function LevelTest() {
     }
   };
 
+  const goBack = () => {
+    if (step === 0) return;
+    setAnswers((prev) => prev.slice(0, -1));
+    setStep((s) => s - 1);
+  };
+
   const retake = () => {
     setActive(false);
     setStep(0);
@@ -81,7 +87,12 @@ export default function LevelTest() {
           <div style={{ height: 8, background: 'var(--color-surface)', border: '1px solid var(--color-divider)', marginBottom: 8 }}>
             <div style={{ height: '100%', width: `${Math.round((step / TEST_QUESTIONS.length) * 100)}%`, background: 'var(--color-accent)' }} />
           </div>
-          <div className="text-muted" style={{ fontSize: 12, marginBottom: 20 }}>{step + 1} / {TEST_QUESTIONS.length}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div className="text-muted" style={{ fontSize: 12 }}>{step + 1} / {TEST_QUESTIONS.length}</div>
+            {step > 0 && (
+              <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={goBack}>← 이전 문제</button>
+            )}
+          </div>
           <div className="card elev-md" style={{ gap: 16 }}>
             <div className="card-kicker">{TEST_QUESTIONS[step].instruction}</div>
             <div className="card-title" style={{ fontWeight: 400, fontFamily: 'var(--font-body)' }}>{TEST_QUESTIONS[step].prompt}</div>

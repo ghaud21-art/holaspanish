@@ -3,19 +3,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppContext';
 import ShareCardButton from '../ShareCardButton';
 import LevelPicker from './LevelPicker';
+import { findChapter } from '../../data/curriculum';
 
 const AVATAR_KEY = 'hola_avatar_data_url';
 
-function computeBadges(profile) {
-  const badges = [];
-  if (profile.streak >= 3) badges.push('3일 연속 학습');
-  if (profile.streak >= 7) badges.push('7일 연속 학습');
-  if (profile.streak >= 30) badges.push('30일 연속 학습');
-  if (profile.completedChapters.length >= 1) badges.push('첫 챕터 완료');
-  if (profile.completedChapters.length >= 10) badges.push('챕터 10개 완료');
-  if (profile.points >= 500) badges.push('500P 달성');
-  return badges;
-}
+// 배지 획득 기준. 여기 목록에 없는 배지는 없어요 — 조건을 채우면 자동으로 마이페이지에 나타나요.
+const ALL_BADGES = [
+  { id: 'streak3', label: '3일 연속 학습', requirement: '연속 학습 3일', check: (p) => p.streak >= 3 },
+  { id: 'streak7', label: '7일 연속 학습', requirement: '연속 학습 7일', check: (p) => p.streak >= 7 },
+  { id: 'streak30', label: '30일 연속 학습', requirement: '연속 학습 30일', check: (p) => p.streak >= 30 },
+  { id: 'chapter1', label: '첫 챕터 완료', requirement: '챕터 1개 완료', check: (p) => p.completedChapters.length >= 1 },
+  { id: 'chapter10', label: '챕터 10개 완료', requirement: '챕터 10개 완료', check: (p) => p.completedChapters.length >= 10 },
+  { id: 'points500', label: '500P 달성', requirement: '포인트 500P 이상', check: (p) => p.points >= 500 },
+];
 
 export default function MyPage() {
   const { profile, saveProfilePatch, myGroup, backendMode, showToast } = useApp();
@@ -30,9 +30,7 @@ export default function MyPage() {
     setAvatar(localStorage.getItem(AVATAR_KEY));
   }, []);
 
-  const totalH = Math.floor(profile.totalMinutes / 60);
-  const totalM = profile.totalMinutes % 60;
-  const badges = computeBadges(profile);
+  const currentLevelTag = findChapter(profile.currentChapterId)?.levelTag || 'Prep';
 
   const handleAvatarFile = (file) => {
     if (!file) return;
@@ -113,7 +111,7 @@ export default function MyPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12, marginTop: 20 }}>
-        <div className="card elev-sm"><div className="card-kicker">누적 학습시간</div><div className="card-title">{totalH}시간 {totalM}분</div></div>
+        <div className="card elev-sm"><div className="card-kicker">현재 레벨</div><div className="card-title">{currentLevelTag}</div></div>
         <div className="card elev-sm"><div className="card-kicker">포인트</div><div className="card-title">{profile.points}P</div></div>
         <div className="card elev-sm"><div className="card-kicker">완료 챕터</div><div className="card-title">{profile.completedChapters.length}개</div></div>
       </div>
@@ -140,13 +138,24 @@ export default function MyPage() {
 
       <h3 style={{ marginTop: 24 }}>배지</h3>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {badges.length === 0 && <span className="text-muted" style={{ fontSize: 13 }}>아직 획득한 배지가 없어요.</span>}
-        {badges.map((b) => <span key={b} className="tag tag-accent">{b}</span>)}
+        {ALL_BADGES.map((b) => {
+          const earned = b.check(profile);
+          return (
+            <span
+              key={b.id}
+              className={earned ? 'tag tag-accent' : 'tag tag-neutral'}
+              style={!earned ? { opacity: 0.55 } : undefined}
+              title={earned ? '획득 완료' : `조건: ${b.requirement}`}
+            >
+              {earned ? '' : '🔒 '}{b.label}
+            </span>
+          );
+        })}
       </div>
 
       <h3 style={{ marginTop: 24 }}>학습 카드 공유</h3>
       <ShareCardButton
-        label="프로필 카드 저장·공유"
+        label="프로필 카드 저장"
         filename="hola-profile"
         eyebrow="내 스페인어 여정"
         title={profile.nickname || '나의 학습 기록'}

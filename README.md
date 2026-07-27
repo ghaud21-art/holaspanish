@@ -23,7 +23,10 @@ Supabase(Postgres) 데이터베이스에 저장하도록 만들어져 있어요.
    하나 만듭니다 (이름, 데이터베이스 비밀번호, 리전을 정하고 생성 — 1~2분 정도 걸려요).
 2. **스키마 만들기**: 프로젝트가 준비되면 왼쪽 메뉴의 **SQL Editor**로 들어가서, 이 저장소의
    `supabase/schema.sql` 파일 내용을 통째로 붙여넣고 실행(Run)하세요. `profiles`, `groups`,
-   `memberships`, `posts`, `generated_vocab` 테이블이 만들어져요.
+   `memberships`, `posts`, `generated_vocab`, `vocab_progress` 테이블이 만들어져요.
+   (이미 예전 버전의 스키마를 실행해둔 프로젝트라면, `vocab_progress` 테이블을 추가하기 위해
+   `supabase/schema.sql` 전체를 다시 한 번 붙여넣고 실행해도 안전해요 — 전부 `if not exists`라
+   기존 데이터는 그대로 유지돼요.)
 3. **키 확인하기**: **Project Settings > API**로 들어가서 `Project URL`과 `service_role` 키(⚠️ `anon` 키가
    아니라 `service_role` 키예요 — 이 키는 서버에서만 쓰고 절대 브라우저로 노출되지 않으니 안전해요)를 복사합니다.
 4. **환경 변수 설정**: `.env.local.example`을 `.env.local`로 복사한 뒤 채웁니다.
@@ -69,6 +72,16 @@ Supabase(Postgres) 데이터베이스에 저장하도록 만들어져 있어요.
   (`GEMINI_API_KEY`가 없거나 호출이 실패하면 자동으로 `lib/grading.js`의 규칙 기반 채점으로 대체돼요.)
 - **단어장 확장**: 관리자 화면에서 레벨/주제/개수를 입력하면 Gemini가 그 자리에서 단어+예문을 만들어
   Supabase(`generated_vocab` 테이블)에 저장하고, 모든 사용자의 "내 단어장" 화면에 바로 합쳐져서 보여요.
+
+## 복습 퀴즈 & 오답노트
+
+상단 메뉴의 "복습 퀴즈"에서 라이트너(Leitner) 방식의 간격 반복 복습을 할 수 있어요.
+
+- 챕터 단어카드에서 "알아요"를 누르거나 단어장에서 카드를 뒤집으면, 그 단어가 `vocab_progress` 테이블에
+  기록되고 다음날부터 복습 대상이 돼요.
+- "복습 퀴즈"에서 정답을 맞히면 복습 간격이 1일 → 3일 → 7일 → 16일 → 35일로 점점 늘어나고,
+  틀리면 다시 1일 뒤로 돌아가면서 "오답노트"에 들어가요.
+- 오답노트에 있는 단어는 퀴즈에서 다시 맞혀야 사라져요.
 
 ## GitHub에 올리기
 

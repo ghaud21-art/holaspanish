@@ -9,8 +9,6 @@ import ShareCardButton from '../ShareCardButton';
 export default function Dashboard() {
   const { profile, setScreen, openChapter, generatedVocab } = useApp();
   const currentChapter = findChapter(profile.currentChapterId) || findChapter(CURRICULUM[0].chapters[0].id);
-  const totalH = Math.floor(profile.totalMinutes / 60);
-  const totalM = profile.totalMinutes % 60;
   const today = todayKey();
   const todayVocabCount = profile.dailyVocabDate === today ? profile.dailyVocabWords.length : 0;
   const vocabGoalMet = todayVocabCount >= DAILY_VOCAB_GOAL;
@@ -37,10 +35,6 @@ export default function Dashboard() {
         <div className="card elev-sm">
           <div className="card-kicker">연속 학습</div>
           <div className="card-title">{profile.streak}일째</div>
-        </div>
-        <div className="card elev-sm">
-          <div className="card-kicker">누적 학습시간</div>
-          <div className="card-title">{totalH}시간 {totalM}분</div>
         </div>
         <div className="card elev-sm">
           <div className="card-kicker">현재 레벨</div>
@@ -84,14 +78,13 @@ export default function Dashboard() {
             이어서 학습하기
           </button>
           <ShareCardButton
-            label="오늘 학습 카드 저장·공유"
+            label="오늘 학습 카드 저장"
             filename="hola-daily"
             eyebrow={currentChapter?.levelTag}
             title={`${profile.nickname || '나'}의 스페인어 기록`}
             subtitle={`연속 ${profile.streak}일째 · 오늘의 챕터 "${currentChapter?.titleKr}"`}
             stats={[
               { label: '연속 학습', value: `${profile.streak}일` },
-              { label: '누적 시간', value: `${totalH}h ${totalM}m` },
               { label: '포인트', value: `${profile.points}P` },
             ]}
             wordList={todayWords}

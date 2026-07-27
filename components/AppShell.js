@@ -7,12 +7,14 @@ import { FLAT_CHAPTERS, findChapter } from '../data/curriculum';
 import { mockGrade, PASS_THRESHOLD } from '../lib/grading';
 import { DAILY_VOCAB_GOAL } from '../lib/constants';
 import { todayKey, diffDaysLocal } from '../lib/date';
+import { resolveWordKey } from '../lib/vocabLookup';
 import Nav from './Nav';
 import LoginScreen from './LoginScreen';
 import Dashboard from './screens/Dashboard';
 import LevelTest from './screens/LevelTest';
 import { ChapterList, ChapterDetail } from './screens/Chapters';
 import VocabNotebook from './screens/VocabNotebook';
+import Review from './screens/Review';
 import { GroupScreen, BoardScreen, RankingScreen } from './screens/Social';
 import MyPage from './screens/MyPage';
 import AdminScreen from './screens/AdminScreen';
@@ -77,9 +79,12 @@ export default function AppShell() {
   const [members, setMembers] = useState([]);
   const [posts, setPosts] = useState([]);
   const [generatedVocab, setGeneratedVocab] = useState([]);
+  const [vocabProgress, setVocabProgress] = useState([]);
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  const generatedVocabRef = useRef(generatedVocab);
+  generatedVocabRef.current = generatedVocab;
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -91,13 +96,15 @@ export default function AppShell() {
     if (!userId) return;
     (async () => {
       try {
-        const [profileRes, groupsRes, statusRes, vocabRes] = await Promise.all([
+        const [profileRes, groupsRes, statusRes, vocabRes, progressRes] = await Promise.all([
           api.getProfile(userId),
           api.getGroups(userId),
           api.status(),
           api.getGeneratedVocab().catch(() => ({ words: [] })),
+          api.getVocabProgress().catch(() => ({ items: [] })),
         ]);
         setGeneratedVocab(vocabRes.words || []);
+        setVocabProgress(progressRes.items || []);
         let nextProfile = { ...DEFAULT_PROFILE, ...profileRes.profile };
         if (!nextProfile.nickname && session?.user?.name) {
           nextProfile = { ...nextProfile, nickname: session.user.name };
@@ -173,6 +180,21 @@ export default function AppShell() {
     updateChapterUi(openChapterId, { flipped: !ui.flipped });
   }, [chapterUi, openChapterId, updateChapterUi]);
 
+  const recordProgress = useCallback((wordKey, es, kr, action) => {
+    api
+      .recordVocabProgress({ wordKey, es, kr, action })
+      .then((res) => {
+        setVocabProgress((prev) => {
+          const idx = prev.findIndex((p) => p.wordKey === wordKey);
+          if (idx === -1) return [...prev, res.item];
+          const next = [...prev];
+          next[idx] = res.item;
+          return next;
+        });
+      })
+      .catch(() => {});
+  }, []);
+
   const markCard = useCallback(
     (known) => {
       const id = openChapterId;
@@ -188,15 +210,18 @@ export default function AppShell() {
       saveProfilePatch(
         buildActivityPatch(profileRef.current, { minutes: 2, wordKey: word ? `${id}:${word.es}` : undefined })
       );
+      if (known && word) recordProgress(`${id}:${word.es}`, word.es, word.kr, 'learn');
     },
-    [chapterUi, openChapterId, updateChapterUi, saveProfilePatch]
+    [chapterUi, openChapterId, updateChapterUi, saveProfilePatch, recordProgress]
   );
 
   const recordVocabWord = useCallback(
     (wordKey) => {
       saveProfilePatch(buildActivityPatch(profileRef.current, { minutes: 1, wordKey }));
+      const resolved = resolveWordKey(wordKey, generatedVocabRef.current);
+      if (resolved) recordProgress(wordKey, resolved.es, resolved.kr, 'learn');
     },
-    [saveProfilePatch]
+    [saveProfilePatch, recordProgress]
   );
 
   const setWritingText = useCallback(
@@ -368,6 +393,8 @@ export default function AppShell() {
     backendMode,
     isAdmin,
     generatedVocab,
+    vocabProgress,
+    recordProgress,
   };
 
   if (status === 'loading') {
@@ -396,6 +423,7 @@ export default function AppShell() {
   else if (activeScreen === 'chapters') ScreenComp = ChapterList;
   else if (activeScreen === 'chapterDetail') ScreenComp = ChapterDetail;
   else if (activeScreen === 'vocab') ScreenComp = VocabNotebook;
+  else if (activeScreen === 'review') ScreenComp = Review;
   else if (activeScreen === 'group') ScreenComp = GroupScreen;
   else if (activeScreen === 'board') ScreenComp = BoardScreen;
   else if (activeScreen === 'ranking') ScreenComp = RankingScreen;
