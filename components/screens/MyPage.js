@@ -4,6 +4,7 @@ import { useApp } from '../AppContext';
 import ShareCardButton from '../ShareCardButton';
 import LevelPicker from './LevelPicker';
 import { CURRICULUM, findChapter } from '../../data/curriculum';
+import { AI_FREE_LIMIT, AI_UPGRADE_CONTACT_URL } from '../../lib/constants';
 
 const AVATAR_KEY = 'hola_avatar_data_url';
 
@@ -32,6 +33,7 @@ export default function MyPage() {
 
   const currentChapter = findChapter(profile.currentChapterId);
   const currentLevelTag = currentChapter?.levelTag || 'Prep';
+  const aiRemaining = Math.max(0, AI_FREE_LIMIT - (profile.aiUsageCount || 0));
   const levelProgress = CURRICULUM.map((lvl) => {
     const total = lvl.chapters.length;
     const done = lvl.chapters.filter((c) => profile.completedChapters.includes(c.id)).length;
@@ -199,10 +201,29 @@ export default function MyPage() {
         ]}
       />
 
-      <p className="text-muted" style={{ fontSize: 11, marginTop: 32 }}>
-        AI 작문 도우미/첨삭 사용: {profile.aiUnlimited ? '무제한' : `${profile.aiUsageCount || 0} / 10회`}
-      </p>
-      <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
+      <h3 style={{ marginTop: 24 }}>AI 작문 도우미 사용량</h3>
+      <div className="card elev-sm" style={{ gap: 8, maxWidth: 480 }}>
+        {profile.aiUnlimited ? (
+          <p className="card-body" style={{ opacity: 1, fontSize: 13 }}>무제한으로 사용할 수 있어요. 🎉</p>
+        ) : (
+          <>
+            <p className="card-body" style={{ opacity: 1, fontSize: 13 }}>
+              작문 첨삭 + 작문 도우미를 합쳐서 무료 {AI_FREE_LIMIT}회 중 <b>{aiRemaining}회</b> 남았어요.
+            </p>
+            <a
+              href={AI_UPGRADE_CONTACT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+            >
+              더 사용하고 싶다면 오픈채팅으로 문의하기
+            </a>
+          </>
+        )}
+      </div>
+
+      <p className="text-muted" style={{ fontSize: 11, marginTop: 24 }}>
         데이터 저장 방식: {backendMode === 'supabase' ? 'Supabase 연동됨 (여러 기기·사람과 공유)' : '로컬 저장 모드 (Supabase 미설정 — README 참고)'}
       </p>
     </div>
