@@ -131,7 +131,8 @@ export function BoardScreen() {
           ? '나만 볼 수 있는 개인 작문 기록이에요. 작문을 제출하면 여기와 그룹 게시판 둘 다에 남아요.'
           : '아직 그룹에 가입하지 않아서 나만 볼 수 있는 개인 작문 기록이에요. 그룹에 가입하면 그룹 게시판도 따로 생겨요.'}
       </p>
-      <div style={{ display: 'grid', gap: 16, marginTop: 16 }}>
+      <div className="scroll-panel" style={{ marginTop: 16 }}>
+      <div style={{ display: 'grid', gap: 16 }}>
         {posts.length === 0 && <p className="text-muted">아직 게시물이 없어요. 챕터 학습에서 작문을 제출해보세요!</p>}
         {posts.map((p) => (
           <div key={p.postId} className="card elev-sm" style={{ gap: 10 }}>
@@ -180,6 +181,7 @@ export function BoardScreen() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
