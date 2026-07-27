@@ -153,6 +153,18 @@ textarea.input { min-height: 90px; resize: vertical; }
   perspective: 1000px;
 }
 
+.scroll-panel {
+  max-height: 66vh;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin-right: -10px;
+}
+.scroll-panel::-webkit-scrollbar { width: 8px; }
+.scroll-panel::-webkit-scrollbar-track { background: transparent; }
+.scroll-panel::-webkit-scrollbar-thumb { background: var(--color-neutral-400); border-radius: 4px; }
+.scroll-panel::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-500); }
+.scroll-panel { scrollbar-width: thin; scrollbar-color: var(--color-neutral-400) transparent; }
+
 .toast-pop {
   position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 90;
   background: var(--color-text); color: var(--color-bg); padding: 10px 18px; font-size: 13px; font-weight: 600;

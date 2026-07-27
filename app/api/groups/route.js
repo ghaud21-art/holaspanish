@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/auth';
 import { getRows, appendRow } from '../../../lib/db';
 import { makeInviteCode, nowIso } from '../../../lib/util';
 
@@ -14,9 +16,12 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  const userId = session.user.id;
+
   const body = await request.json();
-  const { action, userId } = body;
-  if (!userId) return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
+  const { action } = body;
 
   if (action === 'create') {
     const name = (body.name || '').trim() || '나의 스터디 그룹';

@@ -43,11 +43,12 @@ function FlipWord({ word, onFirstFlip }) {
 }
 
 export default function VocabNotebook() {
-  const { profile, recordVocabWord } = useApp();
+  const { profile, recordVocabWord, generatedVocab } = useApp();
   const [query, setQuery] = useState('');
 
   const today = todayKey();
   const todayCount = profile.dailyVocabDate === today ? profile.dailyVocabWords.length : 0;
+  const allVocab = useMemo(() => [...generatedVocab, ...BONUS_VOCAB], [generatedVocab]);
 
   const todaySeed = useMemo(() => {
     const d = new Date();
@@ -55,13 +56,13 @@ export default function VocabNotebook() {
   }, []);
   const todayIdxs = useMemo(() => seededShuffleIndexes(todaySeed, BONUS_VOCAB.length, DAILY_VOCAB_GOAL), [todaySeed]);
   const todayWords = todayIdxs.map((i) => BONUS_VOCAB[i]);
-  const reviewedToday = resolveTodayVocabWords(profile);
+  const reviewedToday = resolveTodayVocabWords(profile, generatedVocab);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return BONUS_VOCAB;
-    return BONUS_VOCAB.filter((w) => w.es.toLowerCase().includes(q) || w.kr.toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return allVocab;
+    return allVocab.filter((w) => w.es.toLowerCase().includes(q) || w.kr.toLowerCase().includes(q));
+  }, [query, allVocab]);
 
   return (
     <div>
@@ -100,7 +101,7 @@ export default function VocabNotebook() {
       </div>
 
       <div className="hr" />
-      <h3>전체 단어장 ({BONUS_VOCAB.length}개)</h3>
+      <h3>전체 단어장 ({allVocab.length}개{generatedVocab.length ? `, Gemini로 생성된 ${generatedVocab.length}개 포함` : ''})</h3>
       <input
         className="input"
         placeholder="스페인어 또는 한글 뜻으로 검색"
@@ -108,12 +109,14 @@ export default function VocabNotebook() {
         onChange={(e) => setQuery(e.target.value)}
         style={{ marginBottom: 16, maxWidth: 360 }}
       />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
-        {filtered.map((w) => (
-          <FlipWord key={w.es} word={w} onFirstFlip={() => recordVocabWord(`bonus:${w.es}`)} />
-        ))}
+      <div className="scroll-panel">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
+          {filtered.map((w) => (
+            <FlipWord key={w.id || w.es} word={w} onFirstFlip={() => recordVocabWord(`${w.id ? 'gen' : 'bonus'}:${w.es}`)} />
+          ))}
+        </div>
+        {filtered.length === 0 && <p className="text-muted">검색 결과가 없어요.</p>}
       </div>
-      {filtered.length === 0 && <p className="text-muted">검색 결과가 없어요.</p>}
     </div>
   );
 }

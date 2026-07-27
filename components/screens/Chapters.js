@@ -25,35 +25,37 @@ export function ChapterList() {
     <div>
       <h1>챕터 학습</h1>
       <p className="text-muted" style={{ marginTop: -8 }}>Prep부터 B2까지, 하나의 커리큘럼으로 이어져요.</p>
-      {CURRICULUM.map((lvl) => (
-        <div key={lvl.key} style={{ marginTop: 24 }}>
-          <h4 className="text-muted" style={{ marginBottom: 12 }}>{lvl.label}</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 14 }}>
-            {lvl.chapters.map((ch) => {
-              const done = isChapterDone(ch.id);
-              const current = isChapterCurrent(ch.id);
-              const locked = isChapterLocked(ch.id);
-              return (
-                <div
-                  key={ch.id}
-                  className="card elev-sm"
-                  style={{ cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.5 : 1, border: current ? '1px solid var(--color-accent)' : '1px solid transparent' }}
-                  onClick={() => openChapter(ch.id)}
-                >
-                  <div className="card-kicker">{ch.grammarPoint ? lvl.levelTag : lvl.levelTag}</div>
-                  <div className="card-title">{ch.titleEs}</div>
-                  <p className="card-body">{ch.titleKr}</p>
-                  <div className="card-meta">
-                    {done && <><Check /><span>완료</span></>}
-                    {current && !done && <><span style={{ color: 'var(--color-accent)' }}><Check /></span><span style={{ color: 'var(--color-accent)' }}>학습 중</span></>}
-                    {locked && <><Lock /><span>잠김</span></>}
+      <div className="scroll-panel" style={{ marginTop: 8 }}>
+        {CURRICULUM.map((lvl) => (
+          <div key={lvl.key} style={{ marginTop: 24 }}>
+            <h4 className="text-muted" style={{ marginBottom: 12 }}>{lvl.label}</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 14 }}>
+              {lvl.chapters.map((ch) => {
+                const done = isChapterDone(ch.id);
+                const current = isChapterCurrent(ch.id);
+                const locked = isChapterLocked(ch.id);
+                return (
+                  <div
+                    key={ch.id}
+                    className="card elev-sm"
+                    style={{ cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.5 : 1, border: current ? '1px solid var(--color-accent)' : '1px solid transparent' }}
+                    onClick={() => openChapter(ch.id)}
+                  >
+                    <div className="card-kicker">{ch.grammarPoint ? lvl.levelTag : lvl.levelTag}</div>
+                    <div className="card-title">{ch.titleEs}</div>
+                    <p className="card-body">{ch.titleKr}</p>
+                    <div className="card-meta">
+                      {done && <><Check /><span>완료</span></>}
+                      {current && !done && <><span style={{ color: 'var(--color-accent)' }}><Check /></span><span style={{ color: 'var(--color-accent)' }}>학습 중</span></>}
+                      {locked && <><Lock /><span>잠김</span></>}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

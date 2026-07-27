@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/auth';
 import { getRows, updateWhere } from '../../../lib/db';
-import { safeParseJSON } from '../../../lib/util';
 
 export async function GET(request) {
   const groupId = new URL(request.url).searchParams.get('groupId');
@@ -18,7 +19,7 @@ export async function GET(request) {
       streak: Number(p?.streak || 0),
       points: Number(p?.points || 0),
       totalMinutes: Number(p?.totalMinutes || 0),
-      badges: safeParseJSON(p?.badges, []),
+      badges: p?.badges || [],
     };
   });
 
@@ -26,6 +27,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+
   const body = await request.json();
   const { action, groupId, userId } = body;
   if (action !== 'cheer') return NextResponse.json({ error: '알 수 없는 action 입니다.' }, { status: 400 });

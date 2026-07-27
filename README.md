@@ -11,33 +11,64 @@ npm install
 npm run dev
 ```
 
-브라우저에서 http://localhost:3000 을 열면 됩니다. 구글 시트를 아직 연동하지 않아도
+브라우저에서 http://localhost:3000 을 열면 됩니다. Supabase를 아직 연동하지 않아도
 `.local-db.json` 파일에 데이터가 저장되면서 정상적으로 동작해요 (내 컴퓨터에서 테스트할 때만 유효).
 
-## 구글 시트 연동 설정 (여러 사람과 함께 쓰려면 꼭 필요해요)
+## Supabase 설정 (여러 사람과 함께 쓰려면 꼭 필요해요)
 
-이 앱은 프로필/진도, 스터디 그룹, 작문 게시판처럼 "여러 사람이 같이 보는 데이터"를
-구글 시트에 저장하도록 만들어져 있어요. 아래 순서대로 설정하면 됩니다.
+이 앱은 프로필/진도, 스터디 그룹, 작문 게시판, 생성된 단어장처럼 "여러 사람이 같이 보는 데이터"를
+Supabase(Postgres) 데이터베이스에 저장하도록 만들어져 있어요.
 
-1. **구글 시트 새로 만들기**: [sheets.google.com](https://sheets.google.com) 에서 빈 스프레드시트를 하나 만들고,
-   주소창의 URL에서 시트 ID를 복사해두세요. (`https://docs.google.com/spreadsheets/d/이 부분이 시트 ID/edit`)
-2. **구글 클라우드 서비스 계정 만들기**:
-   - [Google Cloud Console](https://console.cloud.google.com/)에서 새 프로젝트를 만듭니다 (또는 기존 프로젝트 사용).
-   - "API 및 서비스 > 라이브러리"에서 **Google Sheets API**를 검색해서 사용 설정합니다.
-   - "API 및 서비스 > 사용자 인증 정보 > 사용자 인증 정보 만들기 > 서비스 계정"으로 서비스 계정을 만듭니다.
-   - 만든 서비스 계정으로 들어가서 "키 > 키 추가 > 새 키 만들기 > JSON"을 선택해 키 파일을 다운로드합니다.
-3. **시트에 서비스 계정 공유하기**: 다운로드한 JSON 파일 안의 `client_email` 값(예: `xxx@xxx.iam.gserviceaccount.com`)을
-   복사해서, 1번에서 만든 구글 시트의 "공유" 버튼으로 **편집자(Editor)** 권한으로 초대합니다. (이 단계를 빼먹으면 연동이 안 돼요!)
-4. **환경 변수 설정**: `.env.local.example`을 `.env.local`로 복사한 뒤, JSON 키 파일의 값으로 채웁니다.
+1. **Supabase 프로젝트 만들기**: [supabase.com](https://supabase.com)에서 로그인 후 "New Project"로 프로젝트를
+   하나 만듭니다 (이름, 데이터베이스 비밀번호, 리전을 정하고 생성 — 1~2분 정도 걸려요).
+2. **스키마 만들기**: 프로젝트가 준비되면 왼쪽 메뉴의 **SQL Editor**로 들어가서, 이 저장소의
+   `supabase/schema.sql` 파일 내용을 통째로 붙여넣고 실행(Run)하세요. `profiles`, `groups`,
+   `memberships`, `posts`, `generated_vocab` 테이블이 만들어져요.
+3. **키 확인하기**: **Project Settings > API**로 들어가서 `Project URL`과 `service_role` 키(⚠️ `anon` 키가
+   아니라 `service_role` 키예요 — 이 키는 서버에서만 쓰고 절대 브라우저로 노출되지 않으니 안전해요)를 복사합니다.
+4. **환경 변수 설정**: `.env.local.example`을 `.env.local`로 복사한 뒤 채웁니다.
    ```
-   GOOGLE_SHEET_ID=1번에서 복사한 시트 ID
-   GOOGLE_SERVICE_ACCOUNT_EMAIL=JSON 파일의 client_email
-   GOOGLE_PRIVATE_KEY=JSON 파일의 private_key ("-----BEGIN PRIVATE KEY-----...")
+   SUPABASE_URL=프로젝트 URL
+   SUPABASE_SERVICE_ROLE_KEY=service_role 키
    ```
-   `GOOGLE_PRIVATE_KEY`는 줄바꿈이 포함된 긴 문자열이에요. `.env.local`에 그대로 붙여넣으면 되고,
-   Vercel에 등록할 때는 값 안의 줄바꿈이 `\n` 텍스트로 바뀌어도 앱이 알아서 처리하니 걱정하지 않아도 됩니다.
-5. 앱을 다시 실행하면(`npm run dev`), 필요한 탭(Profiles/Groups/Memberships/Posts)이 시트에 자동으로 생성돼요.
-   마이페이지 화면 맨 아래에서 "구글 시트 연동됨" 문구가 보이면 정상 연동된 거예요.
+5. 앱을 다시 실행하면(`npm run dev`) 바로 Supabase로 저장돼요. 마이페이지 화면 맨 아래에서
+   "Supabase 연동됨" 문구가 보이면 정상 연동된 거예요.
+
+## 구글 로그인(회원가입/로그인) 설정
+
+이제 앱은 구글 계정으로 로그인해야 쓸 수 있어요. 로그인한 계정에 학습 기록이 연결되니, 브라우저를
+지우거나 다른 기기에서 접속해도 같은 구글 계정으로 로그인하면 기록이 그대로 보여요.
+
+1. [Google Cloud Console > 사용자 인증 정보](https://console.cloud.google.com/apis/credentials)로 이동합니다
+   (아무 프로젝트나 써도 되고, 새 프로젝트를 만들어도 돼요 — Supabase와는 무관해요).
+2. "OAuth 동의 화면"을 먼저 설정해야 해요 (User Type은 "외부"로, 앱 이름/이메일 등 기본 정보만 입력하면 충분해요).
+   테스트 단계에서는 "테스트 사용자"에 로그인할 구글 계정들(본인+친구들 이메일)을 추가해두세요.
+3. "사용자 인증 정보 만들기 > OAuth 클라이언트 ID"를 선택하고, 애플리케이션 유형은 **웹 애플리케이션**으로 만듭니다.
+   - 승인된 자바스크립트 원본: `http://localhost:3000` (배포 후에는 실제 배포 주소도 추가)
+   - 승인된 리디렉션 URI: `http://localhost:3000/api/auth/callback/google` (배포 후에는 `https://내도메인/api/auth/callback/google`도 추가)
+4. 발급된 **클라이언트 ID**와 **클라이언트 보안 비밀번호**를 `.env.local`에 넣습니다.
+   ```
+   GOOGLE_OAUTH_CLIENT_ID=발급받은 클라이언트 ID
+   GOOGLE_OAUTH_CLIENT_SECRET=발급받은 클라이언트 보안 비밀번호
+   ```
+5. **관리자 계정 지정**: 관리자로 쓸 구글 이메일 주소를 `ADMIN_EMAILS`에 등록하세요 (여러 명이면 쉼표로 구분).
+   ```
+   ADMIN_EMAILS=본인@gmail.com
+   ```
+   해당 이메일로 로그인하면 상단 메뉴에 "관리자" 항목이 나타나고, 전체 사용자/그룹 현황을 보거나
+   부적절한 게시물·댓글을 지울 수 있어요.
+6. `NEXTAUTH_SECRET`, `NEXTAUTH_URL`은 `.env.local.example`에 이미 기본값이 채워져 있어요. 배포할 때는
+   `NEXTAUTH_URL`을 실제 배포 주소(`https://내도메인`)로 바꿔주세요.
+
+## Gemini API 설정 (작문 첨삭 + 단어장 확장)
+
+[Google AI Studio](https://aistudio.google.com/apikey)에서 API 키를 발급받아 `.env.local`의
+`GEMINI_API_KEY`에 넣으면 두 가지가 실제 Gemini로 동작해요.
+
+- **작문 첨삭**: 챕터 학습에서 작문을 제출하면 Gemini가 문법/표현을 보고 점수와 피드백을 줘요.
+  (`GEMINI_API_KEY`가 없거나 호출이 실패하면 자동으로 `lib/grading.js`의 규칙 기반 채점으로 대체돼요.)
+- **단어장 확장**: 관리자 화면에서 레벨/주제/개수를 입력하면 Gemini가 그 자리에서 단어+예문을 만들어
+  Supabase(`generated_vocab` 테이블)에 저장하고, 모든 사용자의 "내 단어장" 화면에 바로 합쳐져서 보여요.
 
 ## GitHub에 올리기
 
@@ -65,14 +96,24 @@ vercel --prod # 실제 서비스용 배포
 ```
 또는 GitHub에 올린 뒤 [vercel.com/new](https://vercel.com/new)에서 저장소를 가져와 배포할 수도 있어요.
 
-**배포 후 꼭 해야 할 일**: Vercel 프로젝트 설정의 "Environment Variables"에 `.env.local`과 같은 세 값
-(`GOOGLE_SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`)을 등록해야 배포된 사이트에서도
-구글 시트 연동이 동작해요. 등록하지 않으면 배포된 사이트는 서버리스 환경 특성상 "로컬 저장 모드"로 동작하다가
-새로고침할 때마다 데이터가 초기화될 수 있어요.
+**배포 후 꼭 해야 할 일**: Vercel 프로젝트 설정의 "Environment Variables"에 `.env.local`에 있는 값들을
+전부 등록해야 해요.
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase 연동용 (없으면 로컬 저장 모드로 동작하다가 새로고침할 때마다 데이터가 초기화될 수 있어요)
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` — 구글 로그인용
+- `NEXTAUTH_SECRET` — `.env.local`에 있는 값 그대로 등록
+- `NEXTAUTH_URL` — 반드시 실제 배포 주소로! (예: `https://holaspanish.vercel.app`)
+- `ADMIN_EMAILS` — 관리자로 쓸 구글 이메일
+- `GEMINI_API_KEY` — 없으면 작문 첨삭은 규칙 기반 모의 채점으로 자동 대체되고, 단어장 확장은 비활성화돼요.
+
+그리고 위 "구글 로그인 설정"의 3번 단계로 돌아가서, Google Cloud Console의 OAuth 클라이언트에
+배포된 주소(`https://내도메인`과 `https://내도메인/api/auth/callback/google`)를 승인된 원본/리디렉션 URI로
+추가해줘야 배포된 사이트에서도 로그인이 동작해요.
 
 ## 참고
 
 - 커리큘럼 데이터: `data/curriculum.js` (Prep 10개, 회화 I/II 각 30개, 문법 Unidad 01~60)
 - 보너스 단어장: `data/bonusVocab.js` (개인 단어장 PDF에서 고른 약 330개 — 원본은 1,000여 개라 오탈자 위험 때문에 우선 이 정도로 추렸어요. 더 채우고 싶으면 말씀해주세요.)
-- 작문 첨삭은 현재 실제 Gemini API가 아니라 `lib/grading.js`의 규칙 기반 모의 채점이에요. 나중에 Gemini API 키가
-  생기면 이 파일 안의 `mockGrade` 호출부만 실제 API 호출로 바꾸면 됩니다.
+- 작문 첨삭은 `GEMINI_API_KEY`가 설정되어 있으면 Gemini가 채점하고, 없거나 호출이 실패하면
+  `lib/grading.js`의 규칙 기반 모의 채점으로 자동 대체돼요.
+- 프로필/그룹/게시판/생성된 단어장 데이터는 Supabase(Postgres)에 저장돼요 (`lib/supabaseDb.js`).
+  Supabase 미설정 시 `.local-db.json` 파일로 자동 대체됩니다 (`lib/localFallback.js`).

@@ -1,19 +1,21 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { AppContext } from './AppContext';
-import { getUserId } from '../lib/clientIdentity';
 import { api } from '../lib/api';
 import { FLAT_CHAPTERS, findChapter } from '../data/curriculum';
 import { mockGrade, PASS_THRESHOLD } from '../lib/grading';
 import { DAILY_VOCAB_GOAL } from '../lib/constants';
 import { todayKey, diffDaysLocal } from '../lib/date';
 import Nav from './Nav';
+import LoginScreen from './LoginScreen';
 import Dashboard from './screens/Dashboard';
 import LevelTest from './screens/LevelTest';
 import { ChapterList, ChapterDetail } from './screens/Chapters';
 import VocabNotebook from './screens/VocabNotebook';
 import { GroupScreen, BoardScreen, RankingScreen } from './screens/Social';
 import MyPage from './screens/MyPage';
+import AdminScreen from './screens/AdminScreen';
 
 const DEFAULT_PROFILE = {
   nickname: '',
@@ -58,7 +60,9 @@ function buildActivityPatch(profile, { minutes = 0, wordKey } = {}) {
 }
 
 export default function AppShell() {
-  const [userId, setUserId] = useState(null);
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id || null;
+  const isAdmin = session?.user?.role === 'admin';
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [backendMode, setBackendMode] = useState('local');
@@ -72,6 +76,7 @@ export default function AppShell() {
   const [myGroup, setMyGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [generatedVocab, setGeneratedVocab] = useState([]);
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -83,19 +88,22 @@ export default function AppShell() {
   }, []);
 
   useEffect(() => {
-    setUserId(getUserId());
-  }, []);
-
-  useEffect(() => {
     if (!userId) return;
     (async () => {
       try {
-        const [profileRes, groupsRes, statusRes] = await Promise.all([
+        const [profileRes, groupsRes, statusRes, vocabRes] = await Promise.all([
           api.getProfile(userId),
           api.getGroups(userId),
           api.status(),
+          api.getGeneratedVocab().catch(() => ({ words: [] })),
         ]);
-        setProfile({ ...DEFAULT_PROFILE, ...profileRes.profile });
+        setGeneratedVocab(vocabRes.words || []);
+        let nextProfile = { ...DEFAULT_PROFILE, ...profileRes.profile };
+        if (!nextProfile.nickname && session?.user?.name) {
+          nextProfile = { ...nextProfile, nickname: session.user.name };
+          api.saveProfile(userId, { nickname: session.user.name }).catch(() => {});
+        }
+        setProfile(nextProfile);
         setBackendMode(statusRes.mode);
         const first = groupsRes.myGroups?.[0] || null;
         setMyGroup(first || null);
@@ -207,9 +215,27 @@ export default function AppShell() {
     const ui = chapterUi[id];
     if (!ui) return;
     updateChapterUi(id, { gradingStatus: 'loading' });
-    setTimeout(async () => {
-      const { score, feedback } = mockGrade(ui.writingText);
-      const passed = score >= PASS_THRESHOLD;
+    (async () => {
+      const chapter = findChapter(id);
+      let score, feedback, passed;
+      try {
+        const result = await api.gradeWriting({
+          titleEs: chapter.titleEs,
+          titleKr: chapter.titleKr,
+          prompt: chapter.writingPrompt,
+          text: ui.writingText,
+        });
+        score = result.score;
+        feedback = result.feedback;
+        passed = result.passed;
+      } catch {
+        // 서버 라우트 자체에서 이미 규칙 기반 채점으로 폴백하지만, 네트워크 요청 자체가
+        // 실패하는 극단적인 경우를 대비한 이중 안전장치예요.
+        const g = mockGrade(ui.writingText);
+        score = g.score;
+        feedback = g.feedback;
+        passed = score >= PASS_THRESHOLD;
+      }
       updateChapterUi(id, { gradingStatus: 'done', gradingResult: { score, feedback, passed } });
 
       if (passed) {
@@ -228,7 +254,6 @@ export default function AppShell() {
         showToast(alreadyDone ? '다시 통과했어요!' : '챕터 통과! +50P 획득');
 
         if (myGroup) {
-          const chapter = findChapter(id);
           try {
             await api.createPost({
               groupId: myGroup.groupId,
@@ -247,7 +272,7 @@ export default function AppShell() {
           }
         }
       }
-    }, 1200);
+    })();
   }, [chapterUi, openChapterId, updateChapterUi, saveProfilePatch, showToast, myGroup, userId, refreshPosts]);
 
   const refreshMembers = useCallback(async (groupId) => {
@@ -341,7 +366,21 @@ export default function AppShell() {
     reactPost,
     commentPost,
     backendMode,
+    isAdmin,
+    generatedVocab,
   };
+
+  if (status === 'loading') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span className="text-muted">불러오는 중…</span>
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated') {
+    return <LoginScreen />;
+  }
 
   if (!loaded) {
     return (
@@ -361,6 +400,7 @@ export default function AppShell() {
   else if (activeScreen === 'board') ScreenComp = BoardScreen;
   else if (activeScreen === 'ranking') ScreenComp = RankingScreen;
   else if (activeScreen === 'mypage') ScreenComp = MyPage;
+  else if (activeScreen === 'admin' && isAdmin) ScreenComp = AdminScreen;
 
   return (
     <AppContext.Provider value={value}>

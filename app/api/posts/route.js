@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getRows, appendRow, updateRow } from '../../../lib/db';
-import { safeParseJSON, nowIso } from '../../../lib/util';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/auth';
+import { getRows, appendRow, updateRow, deleteRow } from '../../../lib/db';
+import { nowIso } from '../../../lib/util';
 
 function toClient(row) {
   return {
@@ -12,9 +14,9 @@ function toClient(row) {
     chapterTitle: row.chapterTitle,
     text: row.text,
     score: Number(row.score || 0),
-    feedback: safeParseJSON(row.feedback, []),
-    reactions: safeParseJSON(row.reactions, { '❤️': 0, '👏': 0, '🔥': 0 }),
-    comments: safeParseJSON(row.comments, []),
+    feedback: row.feedback || [],
+    reactions: row.reactions || { '❤️': 0, '👏': 0, '🔥': 0 },
+    comments: row.comments || [],
     createdAt: row.createdAt,
   };
 }
@@ -31,13 +33,17 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  const userId = session.user.id;
+
   const body = await request.json();
   const { action } = body;
 
   if (action === 'create') {
-    const { groupId, userId, nickname, chapterId, chapterTitle, text, score, feedback } = body;
-    if (!groupId || !userId || !text) {
-      return NextResponse.json({ error: 'groupId, userId, text가 필요합니다.' }, { status: 400 });
+    const { groupId, nickname, chapterId, chapterTitle, text, score, feedback } = body;
+    if (!groupId || !text) {
+      return NextResponse.json({ error: 'groupId, text가 필요합니다.' }, { status: 400 });
     }
     const postId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const row = await appendRow('Posts', {
@@ -49,9 +55,9 @@ export async function POST(request) {
       chapterTitle: chapterTitle || '',
       text,
       score: score ?? 0,
-      feedback: JSON.stringify(feedback || []),
-      reactions: JSON.stringify({ '❤️': 0, '👏': 0, '🔥': 0 }),
-      comments: JSON.stringify([]),
+      feedback: feedback || [],
+      reactions: { '❤️': 0, '👏': 0, '🔥': 0 },
+      comments: [],
       createdAt: nowIso(),
     });
     return NextResponse.json({ post: toClient(row) });
@@ -62,21 +68,40 @@ export async function POST(request) {
     const rows = await getRows('Posts');
     const row = rows.find((r) => r.postId === postId);
     if (!row) return NextResponse.json({ error: '게시물을 찾을 수 없어요.' }, { status: 404 });
-    const reactions = safeParseJSON(row.reactions, {});
+    const reactions = row.reactions || {};
     reactions[emoji] = (reactions[emoji] || 0) + 1;
-    const saved = await updateRow('Posts', 'postId', postId, { reactions: JSON.stringify(reactions) });
+    const saved = await updateRow('Posts', 'postId', postId, { reactions });
     return NextResponse.json({ post: toClient(saved) });
   }
 
   if (action === 'comment') {
-    const { postId, userId, nickname, text } = body;
+    const { postId, nickname, text } = body;
     if (!text || !text.trim()) return NextResponse.json({ error: '댓글 내용이 비어있어요.' }, { status: 400 });
     const rows = await getRows('Posts');
     const row = rows.find((r) => r.postId === postId);
     if (!row) return NextResponse.json({ error: '게시물을 찾을 수 없어요.' }, { status: 404 });
-    const comments = safeParseJSON(row.comments, []);
+    const comments = row.comments || [];
     comments.push({ userId, nickname: nickname || '익명', text: text.trim(), createdAt: nowIso() });
-    const saved = await updateRow('Posts', 'postId', postId, { comments: JSON.stringify(comments) });
+    const saved = await updateRow('Posts', 'postId', postId, { comments });
+    return NextResponse.json({ post: toClient(saved) });
+  }
+
+  if (action === 'delete') {
+    if (session.user.role !== 'admin') return NextResponse.json({ error: '관리자만 삭제할 수 있어요.' }, { status: 403 });
+    const { postId } = body;
+    await deleteRow('Posts', 'postId', postId);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === 'deleteComment') {
+    if (session.user.role !== 'admin') return NextResponse.json({ error: '관리자만 삭제할 수 있어요.' }, { status: 403 });
+    const { postId, commentIndex } = body;
+    const rows = await getRows('Posts');
+    const row = rows.find((r) => r.postId === postId);
+    if (!row) return NextResponse.json({ error: '게시물을 찾을 수 없어요.' }, { status: 404 });
+    const comments = row.comments || [];
+    comments.splice(commentIndex, 1);
+    const saved = await updateRow('Posts', 'postId', postId, { comments });
     return NextResponse.json({ post: toClient(saved) });
   }
 

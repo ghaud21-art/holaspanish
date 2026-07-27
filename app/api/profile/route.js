@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/auth';
 import { getRows, appendRow, updateRow } from '../../../lib/db';
-import { safeParseJSON, nowIso } from '../../../lib/util';
+import { nowIso } from '../../../lib/util';
 import { FLAT_CHAPTERS } from '../../../data/curriculum';
-
-const JSON_FIELDS = ['completedChapters', 'badges', 'dailyVocabWords'];
 
 function toClient(row) {
   return {
@@ -13,19 +13,20 @@ function toClient(row) {
     points: Number(row.points || 0),
     streak: Number(row.streak || 0),
     totalMinutes: Number(row.totalMinutes || 0),
-    completedChapters: safeParseJSON(row.completedChapters, []),
+    completedChapters: row.completedChapters || [],
     currentChapterId: row.currentChapterId || FLAT_CHAPTERS[0].id,
-    badges: safeParseJSON(row.badges, []),
+    badges: row.badges || [],
     lastStudyDate: row.lastStudyDate || '',
     dailyVocabDate: row.dailyVocabDate || '',
-    dailyVocabWords: safeParseJSON(row.dailyVocabWords, []),
+    dailyVocabWords: row.dailyVocabWords || [],
     updatedAt: row.updatedAt,
   };
 }
 
-function defaultProfile(userId) {
+function defaultProfile(userId, email) {
   return {
     userId,
+    email: email || '',
     nickname: '',
     bio: '',
     points: 0,
@@ -49,29 +50,26 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  const userId = session.user.id;
+
   const body = await request.json();
-  const { userId, patch } = body;
-  if (!userId || !patch) return NextResponse.json({ error: 'userId와 patch가 필요합니다.' }, { status: 400 });
+  const { patch } = body;
+  if (!patch) return NextResponse.json({ error: 'patch가 필요합니다.' }, { status: 400 });
 
   const rows = await getRows('Profiles');
   const existing = rows.find((r) => r.userId === userId);
 
-  const rawPatch = { ...patch };
-  JSON_FIELDS.forEach((f) => {
-    if (f in rawPatch) rawPatch[f] = JSON.stringify(rawPatch[f]);
-  });
-  rawPatch.updatedAt = nowIso();
+  const rawPatch = { ...patch, updatedAt: nowIso() };
 
   let saved;
   if (existing) {
+    if (!existing.email && session.user.email) rawPatch.email = session.user.email;
     saved = await updateRow('Profiles', 'userId', userId, rawPatch);
   } else {
-    const base = defaultProfile(userId);
-    const merged = { ...base, ...patch };
-    JSON_FIELDS.forEach((f) => {
-      merged[f] = JSON.stringify(patch[f] !== undefined ? patch[f] : base[f]);
-    });
-    merged.updatedAt = rawPatch.updatedAt;
+    const base = defaultProfile(userId, session.user.email);
+    const merged = { ...base, ...patch, updatedAt: rawPatch.updatedAt };
     saved = await appendRow('Profiles', merged);
   }
   return NextResponse.json({ profile: toClient(saved) });

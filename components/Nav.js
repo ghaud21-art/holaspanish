@@ -1,4 +1,5 @@
 'use client';
+import { signOut } from 'next-auth/react';
 import { useApp } from './AppContext';
 
 const NAV_ITEMS = [
@@ -13,7 +14,8 @@ const NAV_ITEMS = [
 ];
 
 export default function Nav() {
-  const { screen, setScreen, profile, setOpenChapterId } = useApp();
+  const { screen, setScreen, profile, setOpenChapterId, isAdmin } = useApp();
+  const items = isAdmin ? [...NAV_ITEMS, { key: 'admin', label: '관리자' }] : NAV_ITEMS;
 
   return (
     <nav className="nav">
@@ -21,7 +23,7 @@ export default function Nav() {
         <img src="/icon.png" alt="" width={28} height={28} style={{ borderRadius: 6 }} />
         Hola<span style={{ color: 'var(--color-accent)' }}>.</span>
       </span>
-      {NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <button
           key={item.key}
           type="button"
@@ -36,6 +38,7 @@ export default function Nav() {
         </button>
       ))}
       <span className="tag tag-outline" style={{ marginLeft: 4 }}>{profile.points}P</span>
+      <button type="button" className="navlink" style={{ fontSize: 12 }} onClick={() => signOut()}>로그아웃</button>
     </nav>
   );
 }

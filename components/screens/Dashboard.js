@@ -7,14 +7,14 @@ import { todayKey } from '../../lib/date';
 import ShareCardButton from '../ShareCardButton';
 
 export default function Dashboard() {
-  const { profile, setScreen, openChapter } = useApp();
+  const { profile, setScreen, openChapter, generatedVocab } = useApp();
   const currentChapter = findChapter(profile.currentChapterId) || findChapter(CURRICULUM[0].chapters[0].id);
   const totalH = Math.floor(profile.totalMinutes / 60);
   const totalM = profile.totalMinutes % 60;
   const today = todayKey();
   const todayVocabCount = profile.dailyVocabDate === today ? profile.dailyVocabWords.length : 0;
   const vocabGoalMet = todayVocabCount >= DAILY_VOCAB_GOAL;
-  const todayWords = resolveTodayVocabWords(profile);
+  const todayWords = resolveTodayVocabWords(profile, generatedVocab);
 
   const levelProgress = CURRICULUM.map((lvl) => {
     const total = lvl.chapters.length;

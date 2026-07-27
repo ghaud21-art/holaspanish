@@ -1,4 +1,5 @@
 import './globals.css';
+import AuthSessionProvider from '../components/AuthSessionProvider';
 
 export const metadata = {
   title: 'Hola. — 스페인어 공부 앱',
@@ -14,7 +15,9 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <AuthSessionProvider>{children}</AuthSessionProvider>
+      </body>
     </html>
   );
 }

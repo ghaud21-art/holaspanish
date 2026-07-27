@@ -159,7 +159,7 @@ export default function MyPage() {
       />
 
       <p className="text-muted" style={{ fontSize: 11, marginTop: 32 }}>
-        데이터 저장 방식: {backendMode === 'sheets' ? '구글 시트 연동됨 (여러 기기·사람과 공유)' : '로컬 저장 모드 (구글 시트 미설정 — README 참고)'}
+        데이터 저장 방식: {backendMode === 'supabase' ? 'Supabase 연동됨 (여러 기기·사람과 공유)' : '로컬 저장 모드 (Supabase 미설정 — README 참고)'}
       </p>
     </div>
   );
