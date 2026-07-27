@@ -53,6 +53,13 @@ export async function POST(request) {
   if (action !== 'setAiUnlimited') return NextResponse.json({ error: '알 수 없는 action 입니다.' }, { status: 400 });
   if (!userId) return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
 
-  const saved = await updateRow('Profiles', 'userId', userId, { aiUnlimited: Boolean(aiUnlimited) });
-  return NextResponse.json({ userId, aiUnlimited: Boolean(saved.aiUnlimited) });
+  try {
+    const saved = await updateRow('Profiles', 'userId', userId, { aiUnlimited: Boolean(aiUnlimited) });
+    return NextResponse.json({ userId, aiUnlimited: Boolean(saved.aiUnlimited) });
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'AI 무제한 권한 변경에 실패했어요: ' + err.message + ' (Supabase에 supabase/schema.sql을 다시 실행했는지 확인해주세요.)' },
+      { status: 500 }
+    );
+  }
 }
