@@ -142,7 +142,18 @@ export default function AppShell() {
 
   const isChapterDone = useCallback((id) => profile.completedChapters.includes(id), [profile.completedChapters]);
   const isChapterCurrent = useCallback((id) => profile.currentChapterId === id, [profile.currentChapterId]);
-  const isChapterLocked = useCallback((id) => !isChapterDone(id) && !isChapterCurrent(id), [isChapterDone, isChapterCurrent]);
+  // currentChapterId는 진도 포인터일 뿐이라 completedChapters와 어긋날 수 있어요(예: 챕터를 통과했는데
+  // 포인터가 그대로 남는 경우). 그래서 잠금 여부는 currentChapterId만 보지 않고, 바로 이전 챕터가
+  // 완료됐는지로도 판단해서 completedChapters가 실제 진도의 기준이 되게 합니다.
+  const isChapterLocked = useCallback(
+    (id) => {
+      if (isChapterDone(id) || isChapterCurrent(id)) return false;
+      const idx = FLAT_CHAPTERS.findIndex((c) => c.id === id);
+      const prev = FLAT_CHAPTERS[idx - 1];
+      return prev ? !isChapterDone(prev.id) : false;
+    },
+    [isChapterDone, isChapterCurrent]
+  );
 
   const openChapter = useCallback(
     (id) => {
@@ -269,11 +280,15 @@ export default function AppShell() {
         const studyPatch = buildActivityPatch(p, { minutes: 10 });
         const patch = { ...studyPatch };
         if (!alreadyDone) {
-          const idx = FLAT_CHAPTERS.findIndex((c) => c.id === id);
-          const next = FLAT_CHAPTERS[idx + 1];
           patch.completedChapters = [...p.completedChapters, id];
           patch.points = p.points + 50;
-          if (p.currentChapterId === id && next) patch.currentChapterId = next.id;
+        }
+        // 이미 완료했던 챕터를 다시 통과한 경우에도, 진도 포인터가 아직 이 챕터에 머물러 있다면
+        // 다음 챕터로 넘겨줘요 (포인터가 completedChapters보다 뒤처져서 다음 챕터가 안 열리는 문제 방지).
+        if (p.currentChapterId === id) {
+          const idx = FLAT_CHAPTERS.findIndex((c) => c.id === id);
+          const next = FLAT_CHAPTERS[idx + 1];
+          if (next) patch.currentChapterId = next.id;
         }
         saveProfilePatch(patch);
         showToast(alreadyDone ? '다시 통과했어요!' : '챕터 통과! +50P 획득');
