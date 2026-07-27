@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { useApp } from '../AppContext';
 import { CURRICULUM, FLAT_CHAPTERS, findChapter } from '../../data/curriculum';
 import ShareCardButton from '../ShareCardButton';
@@ -61,12 +62,92 @@ export function ChapterList() {
   );
 }
 
+function WritingHelper({ ui }) {
+  const { askWritingHelp } = useApp();
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const helpChat = ui.helpChat || [];
+  const busy = ui.helpStatus === 'loading';
+
+  const send = (text) => {
+    if (!text.trim() || busy) return;
+    askWritingHelp(text.trim());
+    setInput('');
+  };
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button type="button" className="btn btn-ghost" onClick={() => setOpen((v) => !v)}>
+        {open ? '작문 도우미 닫기' : '💬 작문 도우미 (힌트 받기)'}
+      </button>
+      {open && (
+        <div className="card elev-sm" style={{ marginTop: 10, gap: 10 }}>
+          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>
+            정답 문장은 알려주지 않고, 단어·표현 힌트만 줘요.
+          </p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ fontSize: 12, alignSelf: 'flex-start' }}
+            disabled={busy}
+            onClick={() => send('이 레벨에 맞게 작문하면 좋을 문장을 한글로 추천해줘')}
+          >
+            레벨에 맞는 문장 아이디어 추천받기
+          </button>
+
+          {helpChat.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+              {helpChat.map((m, i) => (
+                <div
+                  key={i}
+                  style={{
+                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: m.role === 'user' ? 'var(--color-accent)' : 'var(--color-neutral-100)',
+                    color: m.role === 'user' ? '#fff' : 'inherit',
+                    border: m.role === 'user' ? 'none' : '1px solid var(--color-divider)',
+                    borderRadius: 10,
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {m.text}
+                </div>
+              ))}
+            </div>
+          )}
+          {busy && <span className="text-muted" style={{ fontSize: 12 }}>생각 중…</span>}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="input"
+              placeholder="궁금한 걸 물어보세요 (예: '가족'은 스페인어로 뭐예요?)"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') send(input);
+              }}
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="btn btn-primary" disabled={busy || !input.trim()} onClick={() => send(input)}>
+              보내기
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChapterDetail() {
   const {
     openChapterId, closeChapter, chapterUi, flipCard, markCard, setWritingText, submitWriting, profile, openChapter, isChapterLocked,
   } = useApp();
   const chapter = findChapter(openChapterId);
-  const ui = chapterUi[openChapterId] || { flipped: false, queue: [], writingText: '', gradingStatus: 'idle', gradingResult: null };
+  const ui = chapterUi[openChapterId] || {
+    flipped: false, queue: [], writingText: '', gradingStatus: 'idle', gradingResult: null, helpChat: [], helpStatus: 'idle',
+  };
 
   if (!chapter) return null;
 
@@ -147,9 +228,13 @@ export function ChapterDetail() {
               onChange={(e) => setWritingText(e.target.value)}
             />
           </div>
+
+          <WritingHelper ui={ui} />
+
           <button
             type="button"
             className="btn btn-primary btn-block"
+            style={{ marginTop: 12 }}
             disabled={ui.gradingStatus === 'loading' || !ui.writingText || !ui.writingText.trim()}
             onClick={submitWriting}
           >

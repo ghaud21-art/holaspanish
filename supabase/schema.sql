@@ -34,9 +34,11 @@ create table if not exists memberships (
   primary key (group_id, user_id)
 );
 
+-- group_id는 실제 그룹의 group_id이거나, 그룹에 가입하지 않은 사용자의 개인 게시판을 나타내는
+-- "solo:{userId}" 문자열일 수 있어서(둘 다 허용) groups 테이블을 참조하는 외래 키를 걸지 않아요.
 create table if not exists posts (
   post_id text primary key,
-  group_id text not null references groups (group_id) on delete cascade,
+  group_id text not null,
   user_id text not null,
   nickname text default '익명',
   chapter_id text default '',
@@ -76,6 +78,10 @@ create table if not exists vocab_progress (
 create index if not exists memberships_user_id_idx on memberships (user_id);
 create index if not exists posts_group_id_idx on posts (group_id);
 create index if not exists vocab_progress_user_id_idx on vocab_progress (user_id);
+
+-- 이미 예전 스키마로 만들어진 프로젝트는 posts.group_id에 groups를 참조하는 외래 키가 남아있어서
+-- "solo:{userId}" 개인 게시판 글을 못 넣어요. 안전하게 그 제약만 제거합니다(테이블/데이터는 그대로).
+alter table posts drop constraint if exists posts_group_id_fkey;
 
 -- 이 앱은 서버 라우트에서 서비스 역할 키(service_role key)로만 접근하고,
 -- 브라우저에서 직접 테이블에 접근하지 않으므로 RLS는 기본값(비활성) 그대로 둡니다.

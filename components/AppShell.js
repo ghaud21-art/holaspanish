@@ -35,6 +35,11 @@ const DEFAULT_PROFILE = {
 
 // 학습 활동(단어 카드, 작문 제출 등)이 있을 때마다 호출해서 스트릭/누적 시간/오늘의 단어 목표를 함께 갱신합니다.
 // wordKey를 넘기면 "오늘 학습한 고유 단어" 목록에 추가합니다 (같은 단어를 여러 번 뒤집어도 중복 집계되지 않도록).
+// 그룹에 가입하지 않은 사용자도 작문 게시판을 쓸 수 있도록, 그룹이 없으면 이 개인 게시판 ID를 써요.
+function soloBoardId(userId) {
+  return `solo:${userId}`;
+}
+
 function buildActivityPatch(profile, { minutes = 0, wordKey } = {}) {
   const today = todayKey();
   let streak = profile.streak;
@@ -114,14 +119,12 @@ export default function AppShell() {
         setBackendMode(statusRes.mode);
         const first = groupsRes.myGroups?.[0] || null;
         setMyGroup(first || null);
-        if (first) {
-          const [membersRes, postsRes] = await Promise.all([
-            api.getGroupMembers(first.groupId),
-            api.getPosts(first.groupId),
-          ]);
-          setMembers(membersRes.members || []);
-          setPosts(postsRes.posts || []);
-        }
+        const [membersRes, postsRes] = await Promise.all([
+          first ? api.getGroupMembers(first.groupId) : Promise.resolve({ members: [] }),
+          api.getPosts(first ? first.groupId : soloBoardId(userId)),
+        ]);
+        setMembers(membersRes.members || []);
+        setPosts(postsRes.posts || []);
       } catch (err) {
         showToast('데이터를 불러오지 못했어요: ' + err.message);
       } finally {
@@ -172,6 +175,8 @@ export default function AppShell() {
             writingText: '',
             gradingStatus: 'idle',
             gradingResult: null,
+            helpChat: [],
+            helpStatus: 'idle',
           },
         };
       });
@@ -240,11 +245,43 @@ export default function AppShell() {
     [openChapterId, updateChapterUi]
   );
 
+  const askWritingHelp = useCallback(
+    (question) => {
+      const id = openChapterId;
+      const ui = chapterUi[id];
+      if (!ui || !question || !question.trim()) return;
+      const chapter = findChapter(id);
+      const history = ui.helpChat || [];
+      const nextHistory = [...history, { role: 'user', text: question.trim() }];
+      updateChapterUi(id, { helpChat: nextHistory, helpStatus: 'loading' });
+      api
+        .askWritingHelp({
+          titleEs: chapter.titleEs,
+          titleKr: chapter.titleKr,
+          level: chapter.levelTag,
+          prompt: chapter.writingPrompt,
+          currentText: ui.writingText,
+          question: question.trim(),
+          history,
+        })
+        .then((res) => {
+          updateChapterUi(id, { helpChat: [...nextHistory, { role: 'assistant', text: res.reply }], helpStatus: 'idle' });
+        })
+        .catch((err) => {
+          updateChapterUi(id, {
+            helpChat: [...nextHistory, { role: 'assistant', text: '도움을 가져오지 못했어요: ' + err.message }],
+            helpStatus: 'idle',
+          });
+        });
+    },
+    [openChapterId, chapterUi, updateChapterUi]
+  );
+
   const refreshPosts = useCallback(async () => {
-    if (!myGroup) return;
-    const res = await api.getPosts(myGroup.groupId);
+    const boardId = myGroup ? myGroup.groupId : soloBoardId(userId);
+    const res = await api.getPosts(boardId);
     setPosts(res.posts || []);
-  }, [myGroup]);
+  }, [myGroup, userId]);
 
   const submitWriting = useCallback(() => {
     const id = openChapterId;
@@ -293,23 +330,22 @@ export default function AppShell() {
         saveProfilePatch(patch);
         showToast(alreadyDone ? '다시 통과했어요!' : '챕터 통과! +50P 획득');
 
-        if (myGroup) {
-          try {
-            await api.createPost({
-              groupId: myGroup.groupId,
-              userId,
-              nickname: p.nickname || '익명',
-              chapterId: id,
-              chapterTitle: chapter.titleEs,
-              text: ui.writingText,
-              score,
-              feedback,
-            });
-            refreshPosts();
-            api.getGroupMembers(myGroup.groupId).then((r) => setMembers(r.members || []));
-          } catch {
-            // 게시판 공유는 선택 사항이라 실패해도 조용히 넘어감
-          }
+        // 그룹이 없어도 개인 작문 게시판(soloBoardId)에 기록해서 혼자서도 작문 이력을 모아볼 수 있어요.
+        try {
+          await api.createPost({
+            groupId: myGroup ? myGroup.groupId : soloBoardId(userId),
+            userId,
+            nickname: p.nickname || '익명',
+            chapterId: id,
+            chapterTitle: chapter.titleEs,
+            text: ui.writingText,
+            score,
+            feedback,
+          });
+          refreshPosts();
+          if (myGroup) api.getGroupMembers(myGroup.groupId).then((r) => setMembers(r.members || []));
+        } catch {
+          // 게시판 공유는 선택 사항이라 실패해도 조용히 넘어감
         }
       }
     })();
@@ -397,6 +433,7 @@ export default function AppShell() {
     recordVocabWord,
     setWritingText,
     submitWriting,
+    askWritingHelp,
     myGroup,
     members,
     posts,

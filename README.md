@@ -24,9 +24,9 @@ Supabase(Postgres) 데이터베이스에 저장하도록 만들어져 있어요.
 2. **스키마 만들기**: 프로젝트가 준비되면 왼쪽 메뉴의 **SQL Editor**로 들어가서, 이 저장소의
    `supabase/schema.sql` 파일 내용을 통째로 붙여넣고 실행(Run)하세요. `profiles`, `groups`,
    `memberships`, `posts`, `generated_vocab`, `vocab_progress` 테이블이 만들어져요.
-   (이미 예전 버전의 스키마를 실행해둔 프로젝트라면, `vocab_progress` 테이블을 추가하기 위해
-   `supabase/schema.sql` 전체를 다시 한 번 붙여넣고 실행해도 안전해요 — 전부 `if not exists`라
-   기존 데이터는 그대로 유지돼요.)
+   (이미 예전 버전의 스키마를 실행해둔 프로젝트라면, `vocab_progress` 테이블을 추가하고
+   그룹 없이도 작문 게시판을 쓸 수 있게 하기 위해 `supabase/schema.sql` 전체를 다시 한 번
+   붙여넣고 실행해도 안전해요 — 전부 `if not exists`/`if exists`라 기존 데이터는 그대로 유지돼요.)
 3. **키 확인하기**: **Project Settings > API**로 들어가서 `Project URL`과 `service_role` 키(⚠️ `anon` 키가
    아니라 `service_role` 키예요 — 이 키는 서버에서만 쓰고 절대 브라우저로 노출되지 않으니 안전해요)를 복사합니다.
 4. **환경 변수 설정**: `.env.local.example`을 `.env.local`로 복사한 뒤 채웁니다.
@@ -72,6 +72,13 @@ Supabase(Postgres) 데이터베이스에 저장하도록 만들어져 있어요.
   (`GEMINI_API_KEY`가 없거나 호출이 실패하면 자동으로 `lib/grading.js`의 규칙 기반 채점으로 대체돼요.)
 - **단어장 확장**: 관리자 화면에서 레벨/주제/개수를 입력하면 Gemini가 그 자리에서 단어+예문을 만들어
   Supabase(`generated_vocab` 테이블)에 저장하고, 모든 사용자의 "내 단어장" 화면에 바로 합쳐져서 보여요.
+- **작문 도우미**: 챕터 학습의 작문 제출란에서 "💬 작문 도우미"를 열면 Gemini에게 힌트를 물어볼 수 있어요.
+  정답 문장이나 번역은 알려주지 않고, 단어·표현 힌트와 이 레벨에 맞는 한글 문장 아이디어만 제안해요.
+
+## 작문 게시판 (그룹 없이도 사용 가능)
+
+작문 게시판은 스터디 그룹에 가입하지 않아도 쓸 수 있어요. 그룹이 없는 사용자는 자신만 볼 수 있는
+개인 게시판(`solo:{userId}`)에 작문이 쌓이고, 나중에 그룹에 가입하면 그때부터는 그룹 게시판이 보여요.
 
 ## 복습 퀴즈 & 오답노트
 

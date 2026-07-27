@@ -105,12 +105,14 @@ export function BoardScreen() {
   const { myGroup, posts, reactPost, commentPost, userId, profile } = useApp();
   const [drafts, setDrafts] = useState({});
 
-  if (!myGroup) return <NoGroupPrompt />;
-
   return (
     <div style={{ maxWidth: 680 }}>
       <h1>작문 게시판</h1>
-      <p className="text-muted" style={{ marginTop: -8 }}>챕터 학습에서 제출한 작문이 여기 그룹원들과 함께 모여요.</p>
+      <p className="text-muted" style={{ marginTop: -8 }}>
+        {myGroup
+          ? '챕터 학습에서 제출한 작문이 여기 그룹원들과 함께 모여요.'
+          : '아직 그룹에 가입하지 않아서 나만 볼 수 있는 개인 작문 기록이에요. 그룹에 가입하면 그룹원들과 함께 볼 수 있어요.'}
+      </p>
       <div style={{ display: 'grid', gap: 16, marginTop: 16 }}>
         {posts.length === 0 && <p className="text-muted">아직 게시물이 없어요. 챕터 학습에서 작문을 제출해보세요!</p>}
         {posts.map((p) => (
