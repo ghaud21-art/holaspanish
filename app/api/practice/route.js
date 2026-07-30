@@ -27,10 +27,14 @@ export async function POST(request) {
   const { action } = body;
 
   if (action === 'suggest') {
-    const { level, completedChapters } = body;
+    const { level, completedChapters, recentPrompts } = body;
     try {
       const vocabHint = vocabHintFromCompleted(completedChapters || []);
-      const kr = await suggestPracticeSentenceWithGemini({ level: level || 'A1', vocabHint });
+      const kr = await suggestPracticeSentenceWithGemini({
+        level: level || 'A1',
+        vocabHint,
+        recentPrompts: Array.isArray(recentPrompts) ? recentPrompts : [],
+      });
       return NextResponse.json({ kr });
     } catch (err) {
       return NextResponse.json({ error: 'Gemini 호출에 실패했어요: ' + err.message }, { status: 502 });

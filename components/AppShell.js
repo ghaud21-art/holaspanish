@@ -98,6 +98,10 @@ export default function AppShell() {
   practiceUiRef.current = practiceUi;
   const generatedVocabRef = useRef(generatedVocab);
   generatedVocabRef.current = generatedVocab;
+  const myPostsRef = useRef(myPosts);
+  myPostsRef.current = myPosts;
+  // 같은 세션 안에서 건너뛰거나 새로 받은 문장까지 포함해서, 방금 추천받은 문장을 또 추천하지 않게 해요.
+  const practiceHistoryRef = useRef([]);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -301,11 +305,19 @@ export default function AppShell() {
   const suggestPractice = useCallback(() => {
     setPracticeUi((prev) => ({ kr: '', text: '', status: 'loading', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }));
     const p = profileRef.current;
+    // 이번 세션에서 이미 보여준 문장 + 예전에 제출했던 연습 문장을 합쳐서, 비슷한 문장이 또 나오지 않게 해요.
+    const pastFromPosts = myPostsRef.current.filter((post) => post.chapterId === 'practice').map((post) => post.chapterTitle);
+    const recentPrompts = [...new Set([...practiceHistoryRef.current, ...pastFromPosts])].slice(-15);
     api
-      .getPracticePrompt({ level: findChapter(p.currentChapterId)?.levelTag || 'A1', completedChapters: p.completedChapters })
-      .then((res) =>
-        setPracticeUi((prev) => ({ kr: res.kr, text: '', status: 'idle', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }))
-      )
+      .getPracticePrompt({
+        level: findChapter(p.currentChapterId)?.levelTag || 'A1',
+        completedChapters: p.completedChapters,
+        recentPrompts,
+      })
+      .then((res) => {
+        practiceHistoryRef.current = [...practiceHistoryRef.current, res.kr].slice(-20);
+        setPracticeUi((prev) => ({ kr: res.kr, text: '', status: 'idle', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }));
+      })
       .catch((err) => {
         showToast('연습 문장을 가져오지 못했어요: ' + err.message);
         setPracticeUi((prev) => ({ kr: '', text: '', status: 'idle', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }));
