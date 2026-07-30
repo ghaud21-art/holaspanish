@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '../AppContext';
+import { CURRICULUM } from '../../data/curriculum';
 
 function NoGroupPrompt() {
   const { createGroup, joinGroup, showToast } = useApp();
@@ -101,88 +102,212 @@ export function GroupScreen() {
   );
 }
 
-export function BoardScreen() {
-  const { myGroup, myPosts, groupPosts, reactPost, commentPost, userId, profile } = useApp();
-  const [drafts, setDrafts] = useState({});
-  const [tab, setTab] = useState(myGroup ? 'group' : 'mine');
-
-  const activeTab = myGroup ? tab : 'mine';
-  const posts = activeTab === 'group' ? groupPosts : myPosts;
+// 게시물 카드 하나. 댓글 입력창 상태는 카드 안에서 각자 관리해요.
+function PostCard({ post }) {
+  const { reactPost, commentPost, userId, profile } = useApp();
+  const [draft, setDraft] = useState('');
 
   return (
-    <div style={{ maxWidth: 680 }}>
-      <h1>작문 게시판</h1>
-
-      {myGroup && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <button type="button" className={activeTab === 'mine' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('mine')}>
-            내 게시판
+    <div className="card elev-sm" style={{ gap: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontWeight: 700 }}>{post.nickname}</div>
+        <span className={post.score >= 70 ? 'tag tag-accent' : 'tag tag-neutral'}>{post.score}점</span>
+      </div>
+      <div className="text-muted" style={{ fontSize: 11 }}>{post.chapterTitle}</div>
+      <p className="card-body" style={{ opacity: 1, fontSize: 14 }}>{post.text}</p>
+      <div style={{ display: 'grid', gap: 3 }}>
+        {post.feedback.map((f) => <div key={f} className="text-muted" style={{ fontSize: 12 }}>· {f}</div>)}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {Object.entries(post.reactions).map(([emoji, count]) => (
+          <button key={emoji} type="button" className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => reactPost(post.postId, emoji)}>
+            {emoji} {count}
           </button>
-          <button type="button" className={activeTab === 'group' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('group')}>
-            {myGroup.name}
-          </button>
-        </div>
-      )}
-
-      <p className="text-muted" style={{ marginTop: -8 }}>
-        {activeTab === 'group'
-          ? '챕터 학습에서 제출한 작문이 여기 그룹원들과 함께 모여요.'
-          : myGroup
-          ? '나만 볼 수 있는 개인 작문 기록이에요. 작문을 제출하면 여기와 그룹 게시판 둘 다에 남아요.'
-          : '아직 그룹에 가입하지 않아서 나만 볼 수 있는 개인 작문 기록이에요. 그룹에 가입하면 그룹 게시판도 따로 생겨요.'}
-      </p>
-      <div className="scroll-panel" style={{ marginTop: 16 }}>
-      <div style={{ display: 'grid', gap: 16 }}>
-        {posts.length === 0 && <p className="text-muted">아직 게시물이 없어요. 챕터 학습에서 작문을 제출해보세요!</p>}
-        {posts.map((p) => (
-          <div key={p.postId} className="card elev-sm" style={{ gap: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontWeight: 700 }}>{p.nickname}</div>
-              <span className={p.score >= 70 ? 'tag tag-accent' : 'tag tag-neutral'}>{p.score}점</span>
-            </div>
-            <div className="text-muted" style={{ fontSize: 11 }}>{p.chapterTitle}</div>
-            <p className="card-body" style={{ opacity: 1, fontSize: 14 }}>{p.text}</p>
-            <div style={{ display: 'grid', gap: 3 }}>
-              {p.feedback.map((f) => <div key={f} className="text-muted" style={{ fontSize: 12 }}>· {f}</div>)}
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {Object.entries(p.reactions).map(([emoji, count]) => (
-                <button key={emoji} type="button" className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => reactPost(p.postId, emoji)}>
-                  {emoji} {count}
-                </button>
-              ))}
-            </div>
-            <div className="hr" style={{ margin: '6px 0' }} />
-            <div style={{ display: 'grid', gap: 6 }}>
-              {p.comments.map((c, i) => (
-                <div key={i} style={{ fontSize: 13 }}><b>{c.nickname}</b> <span className="text-muted">{c.text}</span></div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                className="input"
-                placeholder="응원 댓글 남기기"
-                value={drafts[p.postId] || ''}
-                onChange={(e) => setDrafts((d) => ({ ...d, [p.postId]: e.target.value }))}
-                style={{ flex: 1 }}
-              />
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={async () => {
-                  const text = drafts[p.postId];
-                  if (!text || !text.trim()) return;
-                  await commentPost(p.postId, userId, profile.nickname, text);
-                  setDrafts((d) => ({ ...d, [p.postId]: '' }));
-                }}
-              >
-                등록
-              </button>
-            </div>
-          </div>
         ))}
       </div>
+      <div className="hr" style={{ margin: '6px 0' }} />
+      <div style={{ display: 'grid', gap: 6 }}>
+        {post.comments.map((c, i) => (
+          <div key={i} style={{ fontSize: 13 }}><b>{c.nickname}</b> <span className="text-muted">{c.text}</span></div>
+        ))}
       </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="input"
+          placeholder="응원 댓글 남기기"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          style={{ flex: 1 }}
+        />
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={async () => {
+            if (!draft.trim()) return;
+            await commentPost(post.postId, userId, profile.nickname, draft);
+            setDraft('');
+          }}
+        >
+          등록
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// "챕터학습" 탭: 레벨 카드를 고르면 그 레벨에서 내가 쓴 챕터 작문들을 3x3 그리드로 보여줘요.
+function ChapterBoardTab({ posts }) {
+  const [levelKey, setLevelKey] = useState(null);
+  const chapterPosts = posts.filter((p) => p.chapterId && p.chapterId !== 'practice');
+
+  const levelCounts = CURRICULUM.map((lvl) => {
+    const ids = new Set(lvl.chapters.map((c) => c.id));
+    const count = chapterPosts.filter((p) => ids.has(p.chapterId)).length;
+    return { key: lvl.key, label: lvl.label, levelTag: lvl.levelTag, count };
+  });
+
+  if (!levelKey) {
+    return (
+      <div>
+        <p className="text-muted" style={{ marginTop: 8 }}>레벨을 선택하면 그 레벨에서 작성한 작문을 모아볼 수 있어요.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12, marginTop: 12 }}>
+          {levelCounts.map((lp) => (
+            <div key={lp.key} className="card elev-sm" style={{ cursor: 'pointer' }} onClick={() => setLevelKey(lp.key)}>
+              <div className="card-kicker">{lp.levelTag}</div>
+              <div className="card-title">{lp.label}</div>
+              <p className="card-body" style={{ opacity: 1, fontSize: 13 }}>{lp.count}개의 작문</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const lvl = CURRICULUM.find((l) => l.key === levelKey);
+  const ids = new Set(lvl.chapters.map((c) => c.id));
+  const levelPosts = chapterPosts.filter((p) => ids.has(p.chapterId));
+
+  return (
+    <div>
+      <button type="button" className="btn btn-ghost" onClick={() => setLevelKey(null)} style={{ marginBottom: 12 }}>
+        ← 레벨 선택으로
+      </button>
+      <h3 style={{ marginTop: 0 }}>{lvl.label}</h3>
+      {levelPosts.length === 0 && <p className="text-muted">아직 이 레벨에서 작성한 작문이 없어요.</p>}
+      <div className="scroll-panel">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {levelPosts.map((p) => (
+            <PostCard key={p.postId} post={p} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// "작문 연습" 탭: 지금까지 배운 범위에서 Gemini가 추천한 한국어 문장을 스페인어 두 문장 이상으로 번역해봐요.
+function PracticeTab() {
+  const { practiceUi, suggestPractice, setPracticeText, submitPractice } = useApp();
+  const sentenceCount = practiceUi.text.split(/[.!?¡¿]+/).map((s) => s.trim()).filter(Boolean).length;
+  const enoughSentences = sentenceCount >= 2;
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <p className="text-muted" style={{ marginTop: 8 }}>
+        지금까지 배운 단어와 문법 범위 안에서 연습하기 좋은 한국어 문장을 추천받고, 스페인어 두 문장 이상으로 작문해보세요.
+      </p>
+
+      {!practiceUi.kr && (
+        <button type="button" className="btn btn-primary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
+          {practiceUi.status === 'loading' ? '추천받는 중...' : '연습 문장 추천받기'}
+        </button>
+      )}
+
+      {practiceUi.kr && (
+        <div className="card elev-md" style={{ marginTop: 16, gap: 12 }}>
+          <div className="card-kicker">오늘의 연습 문장</div>
+          <p className="card-title" style={{ fontWeight: 400, fontFamily: 'var(--font-body)' }}>{practiceUi.kr}</p>
+          <div className="field">
+            <label>스페인어로 두 문장 이상 작성해보세요</label>
+            <textarea
+              className="input"
+              rows={4}
+              placeholder="스페인어로 작문해보세요"
+              value={practiceUi.text}
+              onChange={(e) => setPracticeText(e.target.value)}
+            />
+          </div>
+          {!enoughSentences && practiceUi.text.trim() && (
+            <p className="text-muted" style={{ fontSize: 12, color: 'var(--color-accent)', margin: 0 }}>
+              최소 두 문장 이상 작성해주세요.
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!enoughSentences || practiceUi.status === 'grading'}
+              onClick={submitPractice}
+            >
+              {practiceUi.status === 'grading' ? '채점 중...' : '제출하고 첨삭 받기'}
+            </button>
+            <button type="button" className="btn btn-secondary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
+              다른 문장 추천받기
+            </button>
+          </div>
+
+          {practiceUi.status === 'done' && practiceUi.result && (
+            <div className="card elev-sm" style={{ gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className={practiceUi.result.passed ? 'tag tag-accent' : 'tag tag-neutral'}>{practiceUi.result.score}점</span>
+                <span style={{ fontWeight: 700 }}>{practiceUi.result.passed ? '통과!' : '아쉬워요, 다시 도전해보세요'}</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: 'grid', gap: 4 }}>
+                {practiceUi.result.feedback.map((f) => <li key={f}>{f}</li>)}
+              </ul>
+              <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>작문 게시판에 기록했어요.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function BoardScreen() {
+  const { myGroup, myPosts, groupPosts } = useApp();
+  const [tab, setTab] = useState('chapters');
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <h1>작문 게시판</h1>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <button type="button" className={tab === 'chapters' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('chapters')}>
+          챕터학습
+        </button>
+        <button type="button" className={tab === 'practice' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('practice')}>
+          작문 연습
+        </button>
+        {myGroup && (
+          <button type="button" className={tab === 'group' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('group')}>
+            {myGroup.name}
+          </button>
+        )}
+      </div>
+
+      {tab === 'chapters' && <ChapterBoardTab posts={myPosts} />}
+      {tab === 'practice' && <PracticeTab />}
+      {tab === 'group' && myGroup && (
+        <div className="scroll-panel" style={{ marginTop: 8 }}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {groupPosts.length === 0 && <p className="text-muted">아직 게시물이 없어요. 챕터 학습에서 작문을 제출해보세요!</p>}
+            {groupPosts.map((p) => (
+              <PostCard key={p.postId} post={p} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

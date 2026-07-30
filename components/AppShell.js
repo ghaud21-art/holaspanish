@@ -88,6 +88,7 @@ export default function AppShell() {
   const [groupPosts, setGroupPosts] = useState([]);
   const [generatedVocab, setGeneratedVocab] = useState([]);
   const [vocabProgress, setVocabProgress] = useState([]);
+  const [practiceUi, setPracticeUi] = useState({ kr: '', text: '', status: 'idle', result: null });
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -293,6 +294,64 @@ export default function AppShell() {
     }
   }, [myGroup, userId]);
 
+  const suggestPractice = useCallback(() => {
+    setPracticeUi({ kr: '', text: '', status: 'loading', result: null });
+    const p = profileRef.current;
+    api
+      .getPracticePrompt({ level: findChapter(p.currentChapterId)?.levelTag || 'A1', completedChapters: p.completedChapters })
+      .then((res) => setPracticeUi({ kr: res.kr, text: '', status: 'idle', result: null }))
+      .catch((err) => {
+        showToast('연습 문장을 가져오지 못했어요: ' + err.message);
+        setPracticeUi({ kr: '', text: '', status: 'idle', result: null });
+      });
+  }, [showToast]);
+
+  const setPracticeText = useCallback((text) => {
+    setPracticeUi((prev) => ({ ...prev, text }));
+  }, []);
+
+  // 챕터 작문과 달리 통과 여부와 상관없이 항상 게시판에 기록해서, 연습한 흔적이 남게 해요.
+  const submitPractice = useCallback(() => {
+    setPracticeUi((prev) => ({ ...prev, status: 'grading' }));
+    (async () => {
+      const { kr, text } = practiceUi;
+      let score, feedback, passed;
+      try {
+        const result = await api.gradePractice({ krPrompt: kr, text });
+        score = result.score;
+        feedback = result.feedback;
+        passed = result.passed;
+      } catch (err) {
+        setPracticeUi((prev) => ({ ...prev, status: 'idle' }));
+        showToast('채점에 실패했어요: ' + err.message);
+        return;
+      }
+      setPracticeUi((prev) => ({ ...prev, status: 'done', result: { score, feedback, passed } }));
+
+      const p = profileRef.current;
+      const patch = buildActivityPatch(p, { minutes: 5 });
+      if (passed) patch.points = p.points + 20;
+      saveProfilePatch(patch);
+
+      try {
+        const postBase = {
+          userId,
+          nickname: p.nickname || '익명',
+          chapterId: 'practice',
+          chapterTitle: kr,
+          text,
+          score,
+          feedback,
+        };
+        await api.createPost({ ...postBase, groupId: soloBoardId(userId) });
+        if (myGroup) await api.createPost({ ...postBase, groupId: myGroup.groupId });
+        refreshPosts();
+      } catch {
+        // 게시판 공유는 선택 사항이라 실패해도 조용히 넘어감
+      }
+    })();
+  }, [practiceUi, saveProfilePatch, showToast, userId, myGroup, refreshPosts]);
+
   const submitWriting = useCallback(() => {
     const id = openChapterId;
     const ui = chapterUi[id];
@@ -449,6 +508,10 @@ export default function AppShell() {
     setWritingText,
     submitWriting,
     askWritingHelp,
+    practiceUi,
+    suggestPractice,
+    setPracticeText,
+    submitPractice,
     myGroup,
     members,
     myPosts,
