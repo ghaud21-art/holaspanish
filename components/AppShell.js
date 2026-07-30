@@ -88,7 +88,7 @@ export default function AppShell() {
   const [groupPosts, setGroupPosts] = useState([]);
   const [generatedVocab, setGeneratedVocab] = useState([]);
   const [vocabProgress, setVocabProgress] = useState([]);
-  const [practiceUi, setPracticeUi] = useState({ kr: '', text: '', status: 'idle', result: null });
+  const [practiceUi, setPracticeUi] = useState({ kr: '', text: '', status: 'idle', result: null, count: 0 });
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -295,14 +295,14 @@ export default function AppShell() {
   }, [myGroup, userId]);
 
   const suggestPractice = useCallback(() => {
-    setPracticeUi({ kr: '', text: '', status: 'loading', result: null });
+    setPracticeUi((prev) => ({ kr: '', text: '', status: 'loading', result: null, count: prev.count }));
     const p = profileRef.current;
     api
       .getPracticePrompt({ level: findChapter(p.currentChapterId)?.levelTag || 'A1', completedChapters: p.completedChapters })
-      .then((res) => setPracticeUi({ kr: res.kr, text: '', status: 'idle', result: null }))
+      .then((res) => setPracticeUi((prev) => ({ kr: res.kr, text: '', status: 'idle', result: null, count: prev.count })))
       .catch((err) => {
         showToast('연습 문장을 가져오지 못했어요: ' + err.message);
-        setPracticeUi({ kr: '', text: '', status: 'idle', result: null });
+        setPracticeUi((prev) => ({ kr: '', text: '', status: 'idle', result: null, count: prev.count }));
       });
   }, [showToast]);
 
@@ -326,7 +326,7 @@ export default function AppShell() {
         showToast('채점에 실패했어요: ' + err.message);
         return;
       }
-      setPracticeUi((prev) => ({ ...prev, status: 'done', result: { score, feedback, passed } }));
+      setPracticeUi((prev) => ({ ...prev, status: 'done', result: { score, feedback, passed }, count: prev.count + 1 }));
 
       const p = profileRef.current;
       const patch = buildActivityPatch(p, { minutes: 5 });

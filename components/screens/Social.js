@@ -210,12 +210,16 @@ function PracticeTab() {
   const { practiceUi, suggestPractice, setPracticeText, submitPractice } = useApp();
   const sentenceCount = practiceUi.text.split(/[.!?¡¿]+/).map((s) => s.trim()).filter(Boolean).length;
   const enoughSentences = sentenceCount >= 2;
+  const isDone = practiceUi.status === 'done' && practiceUi.result;
 
   return (
     <div style={{ maxWidth: 640 }}>
       <p className="text-muted" style={{ marginTop: 8 }}>
-        지금까지 배운 단어와 문법 범위 안에서 연습하기 좋은 한국어 문장을 추천받고, 스페인어 두 문장 이상으로 작문해보세요.
+        지금까지 배운 단어와 문법 범위 안에서 연습하기 좋은 한국어 문장을 계속 추천받아서, 스페인어 두 문장 이상으로 작문해보세요.
       </p>
+      {practiceUi.count > 0 && (
+        <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>지금까지 {practiceUi.count}개의 연습 문장을 완료했어요.</p>
+      )}
 
       {!practiceUi.kr && (
         <button type="button" className="btn btn-primary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
@@ -227,46 +231,57 @@ function PracticeTab() {
         <div className="card elev-md" style={{ marginTop: 16, gap: 12 }}>
           <div className="card-kicker">오늘의 연습 문장</div>
           <p className="card-title" style={{ fontWeight: 400, fontFamily: 'var(--font-body)' }}>{practiceUi.kr}</p>
-          <div className="field">
-            <label>스페인어로 두 문장 이상 작성해보세요</label>
-            <textarea
-              className="input"
-              rows={4}
-              placeholder="스페인어로 작문해보세요"
-              value={practiceUi.text}
-              onChange={(e) => setPracticeText(e.target.value)}
-            />
-          </div>
-          {!enoughSentences && practiceUi.text.trim() && (
-            <p className="text-muted" style={{ fontSize: 12, color: 'var(--color-accent)', margin: 0 }}>
-              최소 두 문장 이상 작성해주세요.
-            </p>
-          )}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!enoughSentences || practiceUi.status === 'grading'}
-              onClick={submitPractice}
-            >
-              {practiceUi.status === 'grading' ? '채점 중...' : '제출하고 첨삭 받기'}
-            </button>
-            <button type="button" className="btn btn-secondary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
-              다른 문장 추천받기
-            </button>
-          </div>
 
-          {practiceUi.status === 'done' && practiceUi.result && (
-            <div className="card elev-sm" style={{ gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className={practiceUi.result.passed ? 'tag tag-accent' : 'tag tag-neutral'}>{practiceUi.result.score}점</span>
-                <span style={{ fontWeight: 700 }}>{practiceUi.result.passed ? '통과!' : '아쉬워요, 다시 도전해보세요'}</span>
+          {!isDone && (
+            <>
+              <div className="field">
+                <label>스페인어로 두 문장 이상 작성해보세요</label>
+                <textarea
+                  className="input"
+                  rows={4}
+                  placeholder="스페인어로 작문해보세요"
+                  value={practiceUi.text}
+                  onChange={(e) => setPracticeText(e.target.value)}
+                />
               </div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: 'grid', gap: 4 }}>
-                {practiceUi.result.feedback.map((f) => <li key={f}>{f}</li>)}
-              </ul>
-              <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>작문 게시판에 기록했어요.</p>
-            </div>
+              {!enoughSentences && practiceUi.text.trim() && (
+                <p className="text-muted" style={{ fontSize: 12, color: 'var(--color-accent)', margin: 0 }}>
+                  최소 두 문장 이상 작성해주세요.
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!enoughSentences || practiceUi.status === 'grading'}
+                  onClick={submitPractice}
+                >
+                  {practiceUi.status === 'grading' ? '채점 중...' : '제출하고 첨삭 받기'}
+                </button>
+                <button type="button" className="btn btn-secondary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
+                  이 문장 건너뛰기
+                </button>
+              </div>
+            </>
+          )}
+
+          {isDone && (
+            <>
+              <p className="card-body" style={{ opacity: 1, fontSize: 14 }}>{practiceUi.text}</p>
+              <div className="card elev-sm" style={{ gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className={practiceUi.result.passed ? 'tag tag-accent' : 'tag tag-neutral'}>{practiceUi.result.score}점</span>
+                  <span style={{ fontWeight: 700 }}>{practiceUi.result.passed ? '통과!' : '아쉬워요, 다시 도전해보세요'}</span>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: 'grid', gap: 4 }}>
+                  {practiceUi.result.feedback.map((f) => <li key={f}>{f}</li>)}
+                </ul>
+                <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>작문 게시판에 기록했어요.</p>
+              </div>
+              <button type="button" className="btn btn-primary btn-block" onClick={suggestPractice}>
+                다음 문장 받기 →
+              </button>
+            </>
           )}
         </div>
       )}
