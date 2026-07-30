@@ -88,10 +88,14 @@ export default function AppShell() {
   const [groupPosts, setGroupPosts] = useState([]);
   const [generatedVocab, setGeneratedVocab] = useState([]);
   const [vocabProgress, setVocabProgress] = useState([]);
-  const [practiceUi, setPracticeUi] = useState({ kr: '', text: '', status: 'idle', result: null, count: 0 });
+  const [practiceUi, setPracticeUi] = useState({
+    kr: '', text: '', status: 'idle', result: null, count: 0, helpChat: [], helpStatus: 'idle',
+  });
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  const practiceUiRef = useRef(practiceUi);
+  practiceUiRef.current = practiceUi;
   const generatedVocabRef = useRef(generatedVocab);
   generatedVocabRef.current = generatedVocab;
 
@@ -295,19 +299,49 @@ export default function AppShell() {
   }, [myGroup, userId]);
 
   const suggestPractice = useCallback(() => {
-    setPracticeUi((prev) => ({ kr: '', text: '', status: 'loading', result: null, count: prev.count }));
+    setPracticeUi((prev) => ({ kr: '', text: '', status: 'loading', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }));
     const p = profileRef.current;
     api
       .getPracticePrompt({ level: findChapter(p.currentChapterId)?.levelTag || 'A1', completedChapters: p.completedChapters })
-      .then((res) => setPracticeUi((prev) => ({ kr: res.kr, text: '', status: 'idle', result: null, count: prev.count })))
+      .then((res) =>
+        setPracticeUi((prev) => ({ kr: res.kr, text: '', status: 'idle', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }))
+      )
       .catch((err) => {
         showToast('연습 문장을 가져오지 못했어요: ' + err.message);
-        setPracticeUi((prev) => ({ kr: '', text: '', status: 'idle', result: null, count: prev.count }));
+        setPracticeUi((prev) => ({ kr: '', text: '', status: 'idle', result: null, count: prev.count, helpChat: [], helpStatus: 'idle' }));
       });
   }, [showToast]);
 
   const setPracticeText = useCallback((text) => {
     setPracticeUi((prev) => ({ ...prev, text }));
+  }, []);
+
+  const askPracticeHelp = useCallback((question) => {
+    if (!question || !question.trim()) return;
+    const cur = practiceUiRef.current;
+    const history = cur.helpChat || [];
+    const nextHistory = [...history, { role: 'user', text: question.trim() }];
+    setPracticeUi((prev) => ({ ...prev, helpChat: nextHistory, helpStatus: 'loading' }));
+    api
+      .askWritingHelp({
+        titleEs: '',
+        titleKr: '작문 연습',
+        level: findChapter(profileRef.current.currentChapterId)?.levelTag || 'A1',
+        prompt: cur.kr,
+        currentText: cur.text,
+        question: question.trim(),
+        history,
+      })
+      .then((res) => {
+        setPracticeUi((prev) => ({ ...prev, helpChat: [...nextHistory, { role: 'assistant', text: res.reply }], helpStatus: 'idle' }));
+      })
+      .catch((err) => {
+        setPracticeUi((prev) => ({
+          ...prev,
+          helpChat: [...nextHistory, { role: 'assistant', text: err.message || '도움을 가져오지 못했어요.' }],
+          helpStatus: 'idle',
+        }));
+      });
   }, []);
 
   // 챕터 작문과 달리 통과 여부와 상관없이 항상 게시판에 기록해서, 연습한 흔적이 남게 해요.
@@ -512,6 +546,7 @@ export default function AppShell() {
     suggestPractice,
     setPracticeText,
     submitPractice,
+    askPracticeHelp,
     myGroup,
     members,
     myPosts,

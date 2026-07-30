@@ -205,9 +205,78 @@ function ChapterBoardTab({ posts }) {
   );
 }
 
+// 작문 연습 중에 궁금한 걸 물어보는 힌트 챗봇. 정답 번역은 알려주지 않아요.
+function PracticeHelper({ ui }) {
+  const { askPracticeHelp } = useApp();
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const helpChat = ui.helpChat || [];
+  const busy = ui.helpStatus === 'loading';
+
+  const send = (text) => {
+    if (!text.trim() || busy) return;
+    askPracticeHelp(text.trim());
+    setInput('');
+  };
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <button type="button" className="btn btn-ghost" onClick={() => setOpen((v) => !v)}>
+        {open ? '작문 도우미 닫기' : '💬 작문 도우미 (힌트 받기)'}
+      </button>
+      {open && (
+        <div className="card elev-sm" style={{ marginTop: 10, gap: 10 }}>
+          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>
+            정답 번역은 알려주지 않고, 단어·표현 힌트만 줘요.
+          </p>
+          {helpChat.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+              {helpChat.map((m, i) => (
+                <div
+                  key={i}
+                  style={{
+                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: m.role === 'user' ? 'var(--color-accent)' : 'var(--color-neutral-100)',
+                    color: m.role === 'user' ? '#fff' : 'inherit',
+                    border: m.role === 'user' ? 'none' : '1px solid var(--color-divider)',
+                    borderRadius: 10,
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {m.text}
+                </div>
+              ))}
+            </div>
+          )}
+          {busy && <span className="text-muted" style={{ fontSize: 12 }}>생각 중…</span>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="input"
+              placeholder="궁금한 걸 물어보세요 (예: '어제'는 스페인어로 뭐예요?)"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') send(input);
+              }}
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="btn btn-primary" disabled={busy || !input.trim()} onClick={() => send(input)}>
+              보내기
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // "작문 연습" 탭: 지금까지 배운 범위에서 Gemini가 추천한 한국어 문장을 스페인어 두 문장 이상으로 번역해봐요.
 function PracticeTab() {
-  const { practiceUi, suggestPractice, setPracticeText, submitPractice } = useApp();
+  const { practiceUi, suggestPractice, setPracticeText, submitPractice, myPosts } = useApp();
+  const practicePosts = myPosts.filter((p) => p.chapterId === 'practice');
   const sentenceCount = practiceUi.text.split(/[.!?¡¿]+/).map((s) => s.trim()).filter(Boolean).length;
   const enoughSentences = sentenceCount >= 2;
   const isDone = practiceUi.status === 'done' && practiceUi.result;
@@ -244,6 +313,9 @@ function PracticeTab() {
                   onChange={(e) => setPracticeText(e.target.value)}
                 />
               </div>
+
+              <PracticeHelper ui={practiceUi} />
+
               {!enoughSentences && practiceUi.text.trim() && (
                 <p className="text-muted" style={{ fontSize: 12, color: 'var(--color-accent)', margin: 0 }}>
                   최소 두 문장 이상 작성해주세요.
@@ -285,6 +357,16 @@ function PracticeTab() {
           )}
         </div>
       )}
+
+      <h3 style={{ marginTop: 28 }}>지난 연습 기록 ({practicePosts.length}개)</h3>
+      {practicePosts.length === 0 && <p className="text-muted">아직 작성한 연습 작문이 없어요.</p>}
+      <div className="scroll-panel">
+        <div style={{ display: 'grid', gap: 16 }}>
+          {practicePosts.map((p) => (
+            <PostCard key={p.postId} post={p} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
