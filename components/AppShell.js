@@ -532,6 +532,18 @@ export default function AppShell() {
     [refreshPosts, showToast]
   );
 
+  const deleteComment = useCallback(
+    async (postId, commentIndex) => {
+      try {
+        await api.deleteComment(postId, commentIndex);
+        refreshPosts();
+      } catch (err) {
+        showToast('댓글 삭제에 실패했어요: ' + err.message);
+      }
+    },
+    [refreshPosts, showToast]
+  );
+
   const value = {
     userId,
     profile,
@@ -568,6 +580,7 @@ export default function AppShell() {
     cheerMember,
     reactPost,
     commentPost,
+    deleteComment,
     backendMode,
     isAdmin,
     generatedVocab,

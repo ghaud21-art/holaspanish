@@ -104,7 +104,7 @@ export function GroupScreen() {
 
 // 게시물 카드 하나. 댓글 입력창 상태는 카드 안에서 각자 관리해요.
 function PostCard({ post }) {
-  const { reactPost, commentPost, userId, profile } = useApp();
+  const { reactPost, commentPost, deleteComment, userId, profile } = useApp();
   const [draft, setDraft] = useState('');
 
   return (
@@ -128,7 +128,19 @@ function PostCard({ post }) {
       <div className="hr" style={{ margin: '6px 0' }} />
       <div style={{ display: 'grid', gap: 6 }}>
         {post.comments.map((c, i) => (
-          <div key={i} style={{ fontSize: 13 }}><b>{c.nickname}</b> <span className="text-muted">{c.text}</span></div>
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <span><b>{c.nickname}</b> <span className="text-muted">{c.text}</span></span>
+            {c.userId === userId && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: 11, padding: '2px 6px', flexShrink: 0 }}
+                onClick={() => deleteComment(post.postId, i)}
+              >
+                삭제
+              </button>
+            )}
+          </div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -301,45 +313,42 @@ function PracticeTab() {
           <div className="card-kicker">오늘의 연습 문장</div>
           <p className="card-title" style={{ fontWeight: 400, fontFamily: 'var(--font-body)' }}>{practiceUi.kr}</p>
 
-          {!isDone && (
-            <>
-              <div className="field">
-                <label>스페인어로 두 문장 이상 작성해보세요</label>
-                <textarea
-                  className="input"
-                  rows={4}
-                  placeholder="스페인어로 작문해보세요"
-                  value={practiceUi.text}
-                  onChange={(e) => setPracticeText(e.target.value)}
-                />
-              </div>
+          <div className="field">
+            <label>스페인어로 두 문장 이상 작성해보세요</label>
+            <textarea
+              className="input"
+              rows={4}
+              placeholder="스페인어로 작문해보세요"
+              value={practiceUi.text}
+              onChange={(e) => setPracticeText(e.target.value)}
+            />
+          </div>
 
-              <PracticeHelper ui={practiceUi} />
+          <PracticeHelper ui={practiceUi} />
 
-              {!enoughSentences && practiceUi.text.trim() && (
-                <p className="text-muted" style={{ fontSize: 12, color: 'var(--color-accent)', margin: 0 }}>
-                  최소 두 문장 이상 작성해주세요.
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={!enoughSentences || practiceUi.status === 'grading'}
-                  onClick={submitPractice}
-                >
-                  {practiceUi.status === 'grading' ? '채점 중...' : '제출하고 첨삭 받기'}
-                </button>
-                <button type="button" className="btn btn-secondary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
-                  이 문장 건너뛰기
-                </button>
-              </div>
-            </>
+          {!enoughSentences && practiceUi.text.trim() && (
+            <p className="text-muted" style={{ fontSize: 12, color: 'var(--color-accent)', margin: 0 }}>
+              최소 두 문장 이상 작성해주세요.
+            </p>
           )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!enoughSentences || practiceUi.status === 'grading'}
+              onClick={submitPractice}
+            >
+              {practiceUi.status === 'grading' ? '채점 중...' : isDone ? '수정해서 다시 제출' : '제출하고 첨삭 받기'}
+            </button>
+            {!isDone && (
+              <button type="button" className="btn btn-secondary" disabled={practiceUi.status === 'loading'} onClick={suggestPractice}>
+                이 문장 건너뛰기
+              </button>
+            )}
+          </div>
 
           {isDone && (
             <>
-              <p className="card-body" style={{ opacity: 1, fontSize: 14 }}>{practiceUi.text}</p>
               <div className="card elev-sm" style={{ gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span className={practiceUi.result.passed ? 'tag tag-accent' : 'tag tag-neutral'}>{practiceUi.result.score}점</span>
@@ -348,7 +357,7 @@ function PracticeTab() {
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: 'grid', gap: 4 }}>
                   {practiceUi.result.feedback.map((f) => <li key={f}>{f}</li>)}
                 </ul>
-                <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>작문 게시판에 기록했어요.</p>
+                <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>작문 게시판에 기록했어요. 위 내용을 수정해서 다시 제출할 수도 있어요.</p>
               </div>
               <button type="button" className="btn btn-primary btn-block" onClick={suggestPractice}>
                 다음 문장 받기 →

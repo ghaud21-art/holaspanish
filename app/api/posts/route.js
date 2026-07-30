@@ -94,12 +94,17 @@ export async function POST(request) {
   }
 
   if (action === 'deleteComment') {
-    if (session.user.role !== 'admin') return NextResponse.json({ error: '관리자만 삭제할 수 있어요.' }, { status: 403 });
     const { postId, commentIndex } = body;
     const rows = await getRows('Posts');
     const row = rows.find((r) => r.postId === postId);
     if (!row) return NextResponse.json({ error: '게시물을 찾을 수 없어요.' }, { status: 404 });
     const comments = row.comments || [];
+    const target = comments[commentIndex];
+    if (!target) return NextResponse.json({ error: '댓글을 찾을 수 없어요.' }, { status: 404 });
+    // 본인이 쓴 댓글이거나 관리자만 지울 수 있어요.
+    if (session.user.role !== 'admin' && target.userId !== userId) {
+      return NextResponse.json({ error: '본인 댓글만 삭제할 수 있어요.' }, { status: 403 });
+    }
     comments.splice(commentIndex, 1);
     const saved = await updateRow('Posts', 'postId', postId, { comments });
     return NextResponse.json({ post: toClient(saved) });
