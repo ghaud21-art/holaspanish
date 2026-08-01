@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useApp } from '../AppContext';
 import { CURRICULUM } from '../../data/curriculum';
+import PronunciationCheck from '../PronunciationCheck';
 
 function NoGroupPrompt() {
   const { createGroup, joinGroup, showToast } = useApp();
@@ -373,8 +374,19 @@ function PracticeTab() {
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: 'grid', gap: 4 }}>
                   {practiceUi.result.feedback.map((f) => <li key={f}>{f}</li>)}
                 </ul>
+                {practiceUi.result.corrected && (
+                  <div style={{ marginTop: 2 }}>
+                    <span className="text-muted" style={{ fontSize: 11 }}>교정된 문장</span>
+                    <p className="card-body" style={{ opacity: 1, fontSize: 14, margin: '2px 0 0', fontWeight: 600 }}>
+                      {practiceUi.result.corrected}
+                    </p>
+                  </div>
+                )}
                 <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>작문 게시판에 기록했어요. 위 내용을 수정해서 다시 제출할 수도 있어요.</p>
               </div>
+
+              {practiceUi.result.corrected && <PronunciationCheck targetText={practiceUi.result.corrected} />}
+
               <button type="button" className="btn btn-primary btn-block" onClick={suggestPractice}>
                 다음 문장 받기 →
               </button>

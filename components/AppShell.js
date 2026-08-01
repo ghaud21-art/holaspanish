@@ -361,18 +361,19 @@ export default function AppShell() {
     setPracticeUi((prev) => ({ ...prev, status: 'grading' }));
     (async () => {
       const { kr, text } = practiceUi;
-      let score, feedback, passed;
+      let score, feedback, passed, corrected;
       try {
         const result = await api.gradePractice({ krPrompt: kr, text });
         score = result.score;
         feedback = result.feedback;
         passed = result.passed;
+        corrected = result.corrected;
       } catch (err) {
         setPracticeUi((prev) => ({ ...prev, status: 'idle' }));
         showToast('채점에 실패했어요: ' + err.message);
         return;
       }
-      setPracticeUi((prev) => ({ ...prev, status: 'done', result: { score, feedback, passed }, count: prev.count + 1 }));
+      setPracticeUi((prev) => ({ ...prev, status: 'done', result: { score, feedback, passed, corrected }, count: prev.count + 1 }));
 
       const p = profileRef.current;
       const patch = buildActivityPatch(p, { minutes: 5 });
