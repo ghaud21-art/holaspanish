@@ -438,6 +438,11 @@ export default function AppShell() {
     });
   }, [saveProfilePatch]);
 
+  // 지문/답안을 비워서 "지문 추천받기" 버튼이 있는 첫 화면으로 돌아가요. count(완료 개수)는 유지해요.
+  const stopReading = useCallback(() => {
+    setReadingUi((prev) => ({ title: '', passage: '', questions: [], answers: [], status: 'idle', score: null, count: prev.count }));
+  }, []);
+
   const askPracticeHelp = useCallback((question) => {
     if (!question || !question.trim()) return;
     const cur = practiceUiRef.current;
@@ -686,6 +691,7 @@ export default function AppShell() {
     suggestReading,
     setReadingAnswer,
     submitReading,
+    stopReading,
     myGroup,
     members,
     myPosts,

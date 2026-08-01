@@ -410,7 +410,7 @@ function PracticeTab() {
 
 // "독해 연습" 탭: 완료한 챕터의 어휘/문법 범위 안에서 짧은 스페인어 지문 + 이해도 확인 객관식 질문.
 function ReadingTab() {
-  const { readingUi, suggestReading, setReadingAnswer, submitReading } = useApp();
+  const { readingUi, suggestReading, setReadingAnswer, submitReading, stopReading } = useApp();
   const isDone = readingUi.status === 'done';
   const allAnswered = readingUi.questions.length > 0 && readingUi.answers.every((a) => a !== null && a !== undefined);
 
@@ -459,9 +459,14 @@ function ReadingTab() {
           </div>
 
           {!isDone && (
-            <button type="button" className="btn btn-primary btn-block" disabled={!allAnswered} onClick={submitReading}>
-              채점하기
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" style={{ flex: 1 }} disabled={!allAnswered} onClick={submitReading}>
+                채점하기
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={stopReading}>
+                그만하기
+              </button>
+            </div>
           )}
 
           {isDone && readingUi.score && (
@@ -474,9 +479,14 @@ function ReadingTab() {
           )}
 
           {isDone && (
-            <button type="button" className="btn btn-primary btn-block" onClick={suggestReading}>
-              다음 지문 받기 →
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={suggestReading}>
+                다음 지문 받기 →
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={stopReading}>
+                그만하기
+              </button>
+            </div>
           )}
         </div>
       )}
