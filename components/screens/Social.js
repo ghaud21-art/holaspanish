@@ -408,6 +408,82 @@ function PracticeTab() {
   );
 }
 
+// "독해 연습" 탭: 완료한 챕터의 어휘/문법 범위 안에서 짧은 스페인어 지문 + 이해도 확인 객관식 질문.
+function ReadingTab() {
+  const { readingUi, suggestReading, setReadingAnswer, submitReading } = useApp();
+  const isDone = readingUi.status === 'done';
+  const allAnswered = readingUi.questions.length > 0 && readingUi.answers.every((a) => a !== null && a !== undefined);
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <p className="text-muted" style={{ marginTop: 8 }}>
+        지금까지 배운 단어와 문법 범위 안에서 짧은 스페인어 지문을 읽고, 이해도를 확인하는 객관식 문제를 풀어보세요.
+      </p>
+      {readingUi.count > 0 && (
+        <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>지금까지 {readingUi.count}개의 지문을 완료했어요.</p>
+      )}
+
+      {!readingUi.passage && (
+        <button type="button" className="btn btn-primary" disabled={readingUi.status === 'loading'} onClick={suggestReading}>
+          {readingUi.status === 'loading' ? '지문 만드는 중...' : '지문 추천받기'}
+        </button>
+      )}
+
+      {readingUi.passage && (
+        <div className="card elev-md" style={{ marginTop: 16, gap: 14 }}>
+          <div className="card-kicker">{readingUi.title}</div>
+          <p className="card-body" style={{ opacity: 1, fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{readingUi.passage}</p>
+
+          <div className="hr" />
+
+          <div style={{ display: 'grid', gap: 16 }}>
+            {readingUi.questions.map((q, qi) => (
+              <div key={qi} style={{ display: 'grid', gap: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{qi + 1}. {q.question}</div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {q.options.map((opt, oi) => {
+                    const selected = readingUi.answers[qi] === oi;
+                    let style = { cursor: isDone ? 'default' : 'pointer', textAlign: 'left', padding: '10px 14px', fontSize: 13 };
+                    if (isDone && oi === q.correct) style = { ...style, border: '2px solid var(--color-accent)' };
+                    else if (isDone && selected) style = { ...style, opacity: 0.55, textDecoration: 'line-through' };
+                    else if (!isDone && selected) style = { ...style, border: '2px solid var(--color-accent)' };
+                    return (
+                      <div key={oi} className="card elev-sm" style={style} onClick={() => !isDone && setReadingAnswer(qi, oi)}>
+                        {opt}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!isDone && (
+            <button type="button" className="btn btn-primary btn-block" disabled={!allAnswered} onClick={submitReading}>
+              채점하기
+            </button>
+          )}
+
+          {isDone && readingUi.score && (
+            <div className="card elev-sm" style={{ gap: 6 }}>
+              <span className={readingUi.score.correct === readingUi.score.total ? 'tag tag-accent' : 'tag tag-neutral'} style={{ alignSelf: 'flex-start' }}>
+                {readingUi.score.correct} / {readingUi.score.total} 정답
+              </span>
+              <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>정답은 초록 테두리로 표시돼요.</p>
+            </div>
+          )}
+
+          {isDone && (
+            <button type="button" className="btn btn-primary btn-block" onClick={suggestReading}>
+              다음 지문 받기 →
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function BoardScreen() {
   const { myGroup, myPosts, groupPosts } = useApp();
   const [tab, setTab] = useState('chapters');
@@ -423,6 +499,9 @@ export function BoardScreen() {
         <button type="button" className={tab === 'practice' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('practice')}>
           작문 연습
         </button>
+        <button type="button" className={tab === 'reading' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('reading')}>
+          독해 연습
+        </button>
         {myGroup && (
           <button type="button" className={tab === 'group' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('group')}>
             {myGroup.name}
@@ -432,6 +511,7 @@ export function BoardScreen() {
 
       {tab === 'chapters' && <ChapterBoardTab posts={myPosts} />}
       {tab === 'practice' && <PracticeTab />}
+      {tab === 'reading' && <ReadingTab />}
       {tab === 'group' && myGroup && (
         <div className="scroll-panel" style={{ marginTop: 8 }}>
           <div style={{ display: 'grid', gap: 16 }}>

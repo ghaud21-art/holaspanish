@@ -91,6 +91,9 @@ export default function AppShell() {
   const [practiceUi, setPracticeUi] = useState({
     kr: '', text: '', status: 'idle', result: null, count: 0, helpChat: [], helpStatus: 'idle',
   });
+  const [readingUi, setReadingUi] = useState({
+    title: '', passage: '', questions: [], answers: [], status: 'idle', score: null, count: 0,
+  });
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -105,6 +108,8 @@ export default function AppShell() {
   // 뒤로가기/새로고침으로 화면을 벗어났다가 돌아와도 작성 중이던 연습 문장이 사라지지 않도록
   // localStorage에 저장해뒀다가 복원해요. restoredRef는 복원이 끝나기 전에 빈 상태로 덮어쓰는 걸 막아줘요.
   const practiceRestoredRef = useRef(false);
+  const readingRestoredRef = useRef(false);
+  const readingHistoryRef = useRef([]);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -180,6 +185,30 @@ export default function AppShell() {
       // 저장 공간이 꽉 찼거나 접근 불가능해도 앱 동작에는 영향 없어야 해서 조용히 넘어가요.
     }
   }, [userId, practiceUi]);
+
+  // 독해 지문/답안도 같은 방식으로 복원해요.
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const raw = localStorage.getItem(`hola_reading_draft_${userId}`);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setReadingUi((prev) => ({ ...prev, ...saved, status: saved.status === 'loading' ? 'idle' : saved.status || 'idle' }));
+      }
+    } catch {
+      // 저장된 값이 깨져있으면 그냥 무시하고 새로 시작해요.
+    }
+    readingRestoredRef.current = true;
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !readingRestoredRef.current) return;
+    try {
+      localStorage.setItem(`hola_reading_draft_${userId}`, JSON.stringify(readingUi));
+    } catch {
+      // 저장 공간이 꽉 찼거나 접근 불가능해도 앱 동작에는 영향 없어야 해서 조용히 넘어가요.
+    }
+  }, [userId, readingUi]);
 
   const saveProfilePatch = useCallback(
     (patch) => {
@@ -358,6 +387,56 @@ export default function AppShell() {
   const setPracticeText = useCallback((text) => {
     setPracticeUi((prev) => ({ ...prev, text }));
   }, []);
+
+  const suggestReading = useCallback(() => {
+    setReadingUi((prev) => ({ title: '', passage: '', questions: [], answers: [], status: 'loading', score: null, count: prev.count }));
+    const p = profileRef.current;
+    api
+      .getReadingPassage({
+        level: findChapter(p.currentChapterId)?.levelTag || 'A1',
+        completedChapters: p.completedChapters,
+        recentTopics: readingHistoryRef.current,
+      })
+      .then((res) => {
+        readingHistoryRef.current = [...readingHistoryRef.current, res.title].slice(-15);
+        setReadingUi((prev) => ({
+          title: res.title,
+          passage: res.passage,
+          questions: res.questions,
+          answers: res.questions.map(() => null),
+          status: 'idle',
+          score: null,
+          count: prev.count,
+        }));
+      })
+      .catch((err) => {
+        showToast('독해 지문을 가져오지 못했어요: ' + err.message);
+        setReadingUi((prev) => ({ title: '', passage: '', questions: [], answers: [], status: 'idle', score: null, count: prev.count }));
+      });
+  }, [showToast]);
+
+  const setReadingAnswer = useCallback((qIndex, optionIndex) => {
+    setReadingUi((prev) => {
+      if (prev.status === 'done') return prev;
+      const answers = [...prev.answers];
+      answers[qIndex] = optionIndex;
+      return { ...prev, answers };
+    });
+  }, []);
+
+  const submitReading = useCallback(() => {
+    setReadingUi((prev) => {
+      const correct = prev.questions.reduce((acc, q, i) => acc + (prev.answers[i] === q.correct ? 1 : 0), 0);
+      const total = prev.questions.length;
+      if (correct === total && total > 0) {
+        const p = profileRef.current;
+        saveProfilePatch({ ...buildActivityPatch(p, { minutes: 5 }), points: p.points + 15 });
+      } else {
+        saveProfilePatch(buildActivityPatch(profileRef.current, { minutes: 5 }));
+      }
+      return { ...prev, status: 'done', score: { correct, total }, count: prev.count + 1 };
+    });
+  }, [saveProfilePatch]);
 
   const askPracticeHelp = useCallback((question) => {
     if (!question || !question.trim()) return;
@@ -603,6 +682,10 @@ export default function AppShell() {
     setPracticeText,
     submitPractice,
     askPracticeHelp,
+    readingUi,
+    suggestReading,
+    setReadingAnswer,
+    submitReading,
     myGroup,
     members,
     myPosts,
