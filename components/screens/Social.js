@@ -68,6 +68,7 @@ export function GroupScreen() {
   if (!myGroup) return <NoGroupPrompt />;
 
   const maxMinutes = Math.max(...members.map((m) => m.totalMinutes), 1);
+  const ranked = [...members].sort((a, b) => b.points - a.points);
 
   return (
     <div>
@@ -98,6 +99,21 @@ export function GroupScreen() {
           </div>
         ))}
       </div>
+
+      <h3 style={{ marginTop: 28 }}>그룹 랭킹 (포인트 기준)</h3>
+      <table className="table" style={{ marginTop: 12 }}>
+        <thead><tr><th>순위</th><th>이름</th><th>연속학습</th><th>포인트</th></tr></thead>
+        <tbody>
+          {ranked.map((m, i) => (
+            <tr key={m.userId}>
+              <td style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{i + 1}</td>
+              <td>{m.nickname}{m.userId === userId ? ' (나)' : ''}</td>
+              <td>{m.streak}일</td>
+              <td style={{ fontWeight: 700 }}>{m.points}P</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -414,32 +430,6 @@ export function BoardScreen() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-export function RankingScreen() {
-  const { myGroup, members } = useApp();
-  if (!myGroup) return <NoGroupPrompt />;
-  const ranked = [...members].sort((a, b) => b.points - a.points);
-
-  return (
-    <div style={{ maxWidth: 680 }}>
-      <h1>그룹 랭킹</h1>
-      <p className="text-muted" style={{ marginTop: -8 }}>{myGroup.name} · 포인트 기준</p>
-      <table className="table" style={{ marginTop: 16 }}>
-        <thead><tr><th>순위</th><th>이름</th><th>연속학습</th><th>포인트</th></tr></thead>
-        <tbody>
-          {ranked.map((m, i) => (
-            <tr key={m.userId}>
-              <td style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{i + 1}</td>
-              <td>{m.nickname}</td>
-              <td>{m.streak}일</td>
-              <td style={{ fontWeight: 700 }}>{m.points}P</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

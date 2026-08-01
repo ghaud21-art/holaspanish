@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppContext';
 import ShareCardButton from '../ShareCardButton';
 import LevelPicker from './LevelPicker';
+import StudyCalendar from '../StudyCalendar';
 import { CURRICULUM, findChapter } from '../../data/curriculum';
 import { AI_FREE_LIMIT, AI_UPGRADE_CONTACT_URL } from '../../lib/constants';
 
@@ -25,6 +26,7 @@ export default function MyPage() {
   const [draftBio, setDraftBio] = useState(profile.bio);
   const [avatar, setAvatar] = useState(null);
   const [showLevelPicker, setShowLevelPicker] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -146,6 +148,18 @@ export default function MyPage() {
           </div>
         ))}
       </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+        <h3 style={{ margin: 0 }}>캘린더 · 통계</h3>
+        <button type="button" className="btn btn-ghost" onClick={() => setCalendarOpen((v) => !v)}>
+          {calendarOpen ? '접기' : '펼치기'}
+        </button>
+      </div>
+      {calendarOpen && (
+        <div style={{ marginTop: 12 }}>
+          <StudyCalendar />
+        </div>
+      )}
 
       <h3 style={{ marginTop: 24 }}>가입한 그룹</h3>
       {myGroup ? (

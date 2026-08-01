@@ -14,7 +14,7 @@ import Dashboard from './screens/Dashboard';
 import LevelTest from './screens/LevelTest';
 import { ChapterList, ChapterDetail } from './screens/Chapters';
 import VocabNotebook from './screens/VocabNotebook';
-import { GroupScreen, BoardScreen, RankingScreen } from './screens/Social';
+import { GroupScreen, BoardScreen } from './screens/Social';
 import MyPage from './screens/MyPage';
 import AdminScreen from './screens/AdminScreen';
 
@@ -616,7 +616,6 @@ export default function AppShell() {
   else if (activeScreen === 'vocab') ScreenComp = VocabNotebook;
   else if (activeScreen === 'group') ScreenComp = GroupScreen;
   else if (activeScreen === 'board') ScreenComp = BoardScreen;
-  else if (activeScreen === 'ranking') ScreenComp = RankingScreen;
   else if (activeScreen === 'mypage') ScreenComp = MyPage;
   else if (activeScreen === 'admin' && isAdmin) ScreenComp = AdminScreen;
 

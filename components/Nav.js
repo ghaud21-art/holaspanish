@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { key: 'vocab', label: '단어장' },
   { key: 'group', label: '그룹' },
   { key: 'board', label: '작문게시판' },
-  { key: 'ranking', label: '랭킹' },
   { key: 'mypage', label: '마이페이지' },
 ];
 
