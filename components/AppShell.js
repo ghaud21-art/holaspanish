@@ -102,6 +102,9 @@ export default function AppShell() {
   myPostsRef.current = myPosts;
   // 같은 세션 안에서 건너뛰거나 새로 받은 문장까지 포함해서, 방금 추천받은 문장을 또 추천하지 않게 해요.
   const practiceHistoryRef = useRef([]);
+  // 뒤로가기/새로고침으로 화면을 벗어났다가 돌아와도 작성 중이던 연습 문장이 사라지지 않도록
+  // localStorage에 저장해뒀다가 복원해요. restoredRef는 복원이 끝나기 전에 빈 상태로 덮어쓰는 걸 막아줘요.
+  const practiceRestoredRef = useRef(false);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -149,6 +152,34 @@ export default function AppShell() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // 작문 연습 중이던 문장/텍스트를 복원해요 (뒤로가기, 새로고침, 다른 화면 갔다 와도 유지).
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const raw = localStorage.getItem(`hola_practice_draft_${userId}`);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setPracticeUi((prev) => ({
+          ...prev,
+          ...saved,
+          status: saved.status === 'grading' || saved.status === 'loading' ? 'idle' : saved.status || 'idle',
+        }));
+      }
+    } catch {
+      // 저장된 값이 깨져있으면 그냥 무시하고 새로 시작해요.
+    }
+    practiceRestoredRef.current = true;
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !practiceRestoredRef.current) return;
+    try {
+      localStorage.setItem(`hola_practice_draft_${userId}`, JSON.stringify(practiceUi));
+    } catch {
+      // 저장 공간이 꽉 찼거나 접근 불가능해도 앱 동작에는 영향 없어야 해서 조용히 넘어가요.
+    }
+  }, [userId, practiceUi]);
 
   const saveProfilePatch = useCallback(
     (patch) => {

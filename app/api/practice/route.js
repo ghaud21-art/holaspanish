@@ -27,6 +27,16 @@ function vocabHintFromCompleted(completedChapters = []) {
   return shuffle(words).slice(0, 50).join(', ');
 }
 
+// 완료한 "문법" 챕터(gram-01~60)의 포인트만 모아요. 회화 챕터만 끝낸 학습자는 이 목록이 비어있는데,
+// 그럴 땐 Gemini에게 현재 시제 중심의 아주 단순한 문장만 내달라고 명시적으로 알려줘요.
+function grammarHintFromCompleted(completedChapters = []) {
+  const points = [];
+  FLAT_CHAPTERS.forEach((c) => {
+    if (completedChapters.includes(c.id) && c.grammarPoint) points.push(c.grammarPoint);
+  });
+  return points;
+}
+
 export async function POST(request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
@@ -41,9 +51,11 @@ export async function POST(request) {
     const { level, completedChapters, recentPrompts } = body;
     try {
       const vocabHint = vocabHintFromCompleted(completedChapters || []);
+      const grammarHint = grammarHintFromCompleted(completedChapters || []);
       const kr = await suggestPracticeSentenceWithGemini({
         level: level || 'A1',
         vocabHint,
+        grammarHint,
         recentPrompts: Array.isArray(recentPrompts) ? recentPrompts : [],
       });
       return NextResponse.json({ kr });
